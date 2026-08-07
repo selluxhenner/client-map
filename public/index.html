@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Client-Map — ServiWeb</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='%230f766e'/></svg>">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/vendor/markercluster/MarkerCluster.css">
+  <link rel="stylesheet" href="/vendor/markercluster/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/vendor/leaflet/leaflet.js"></script>
+  <script src="/vendor/markercluster/leaflet.markercluster.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <button class="btn ghost" id="menu" title="Filter" aria-label="Filter ein-/ausblenden">☰</button>
+
+      <div class="brand">Serviweb <small>Client-Map</small></div>
+
+      <nav class="nav">
+        <a href="/" class="active">Karte</a>
+        <a href="/liste.html">Liste</a>
+      </nav>
+
+      <div class="search">
+        <input type="search" id="geo-input" placeholder="Ort suchen, z. B. Wil SG" autocomplete="off">
+        <button class="btn" id="geo-go">Los</button>
+        <div class="geo-results" id="geo-results" hidden></div>
+      </div>
+
+      <button class="btn primary" id="scan">Diesen Bereich durchsuchen</button>
+      <button class="btn" id="add-pin" title="Betrieb von Hand setzen">+ Pin</button>
+
+      <div class="spacer"></div>
+      <div class="stats" id="stats"></div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar" id="filters"></aside>
+      <div class="map" id="map"></div>
+      <aside class="detail" id="detail"></aside>
+    </div>
+  </div>
+
+  <script type="module" src="/js/map.js"></script>
+</body>
+</html>

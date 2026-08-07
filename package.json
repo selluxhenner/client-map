@@ -1,0 +1,21 @@
+{
+  "name": "client-map",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ServiWeb Client-Map - Gastro-Akquise auf der Karte",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
