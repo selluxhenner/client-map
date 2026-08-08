@@ -167,6 +167,52 @@ const migrations = [
       CREATE INDEX idx_jobs_created ON jobs(created_at);
     `);
   },
+
+  // 4 - Kurzfassung der Analyse direkt am Betrieb. Die ausfuehrliche Fassung
+  //     bleibt als Markdown auf der Platte; hier steht nur, was Liste und
+  //     Detail-Panel sofort zeigen sollen, ohne eine Datei zu lesen.
+  () => {
+    db.exec('ALTER TABLE venues ADD COLUMN analysis_summary TEXT;');
+  },
+
+  // 5 - Womit wurde der Betrieb geprueft: 'schnell' (nur die Score-Fragen,
+  //     rund 30 Sekunden) oder 'analyse' (volle Recherche). Ohne diese
+  //     Unterscheidung koennte ein Schnell-Check eine richtige Analyse
+  //     ueberschreiben, und im Panel stuende "Analyse" ueber zwei Zeilen.
+  () => {
+    db.exec('ALTER TABLE venues ADD COLUMN analysis_kind TEXT;');
+    db.exec("UPDATE venues SET analysis_kind = 'analyse' WHERE last_analysis_at IS NOT NULL;");
+  },
+
+  // 6 - Neuer Status 'interessiert' (siehe scoring.js) braucht seinen eigenen
+  //     Schnellfilter: das ist der Stapel, aus dem die naechsten Demos
+  //     entstehen. 'geschlossen' bekommt keinen - danach sucht man nicht.
+  () => {
+    db.prepare(
+      'INSERT INTO saved_filters (name, query, builtin, sort_order) VALUES (?, ?, 1, ?)'
+    ).run('Vorgemerkt für Demo', 'status=interessiert', 2);
+    db.prepare("UPDATE saved_filters SET sort_order = 3 WHERE builtin = 1 AND query = 'status=demo_gebaut'").run();
+  },
+
+  // 7 - CRM-Tiefe (Phase 7): Wiedervorlage-Datum und Kontakt-Entwürfe.
+  //
+  //     Die Wiedervorlage steht am Betrieb und nicht an der Interaktion: es
+  //     gibt immer nur eine offene Frage "wann kümmere ich mich wieder um
+  //     diesen Laden", und die will man nicht aus einer Historie errechnen.
+  () => {
+    db.exec(`
+      ALTER TABLE venues ADD COLUMN follow_up_at      TEXT;
+      ALTER TABLE venues ADD COLUMN follow_up_note    TEXT;
+      ALTER TABLE venues ADD COLUMN outreach_draft    TEXT;
+      ALTER TABLE venues ADD COLUMN outreach_draft_at TEXT;
+      CREATE INDEX idx_venues_followup ON venues(follow_up_at);
+      CREATE INDEX idx_interactions_datum ON interactions(happened_at);
+    `);
+
+    db.prepare(
+      'INSERT INTO saved_filters (name, query, builtin, sort_order) VALUES (?, ?, 1, ?)'
+    ).run('⏰ Wiedervorlage fällig', 'wiedervorlage=faellig', 4);
+  },
 ];
 
 const current = db.pragma('user_version', { simple: true });
@@ -191,6 +237,7 @@ export function rowToVenue(row) {
     verified: Boolean(row.verified),
     tags: safeJson(row.tags, []),
     score_breakdown: safeJson(row.score_breakdown, []),
+    outreach_draft: safeJson(row.outreach_draft, null),
   };
 }
 

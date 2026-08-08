@@ -11,6 +11,7 @@ const SORTS = {
   updated: 'updated_at DESC',
   created: 'created_at DESC',
   contact: 'last_contact_at DESC NULLS LAST',
+  wiedervorlage: 'follow_up_at ASC NULLS LAST, score DESC',
 };
 
 const csv = (value) =>
@@ -67,7 +68,24 @@ export function buildVenueQuery(q = {}) {
 
   if (q.hasInstagram === '1') where.push("instagram IS NOT NULL AND instagram <> ''");
 
-  if (q.includeClosed !== '1') where.push('permanently_closed = 0');
+  // Geschlossene Betriebe sind normalerweise nur Rauschen. Wer aber
+  // ausdruecklich nach dem Status 'geschlossen' filtert, will genau die sehen -
+  // sonst klickt man das Kaestchen an und bekommt eine leere Karte.
+  const suchtGeschlossene = csv(q.status).includes('geschlossen');
+  if (q.includeClosed !== '1' && !suchtGeschlossene) {
+    where.push('permanently_closed = 0');
+  }
+
+  // Wiedervorlage: ein von Hand gesetztes Datum, das heute oder in der
+  // Vergangenheit liegt. 'localtime', weil der Tag um Mitternacht deiner Uhr
+  // wechselt und nicht um Mitternacht UTC.
+  if (q.wiedervorlage === 'faellig') {
+    where.push("(follow_up_at IS NOT NULL AND date(follow_up_at) <= date('now', 'localtime'))");
+  } else if (q.wiedervorlage === 'gesetzt') {
+    where.push('follow_up_at IS NOT NULL');
+  }
+
+  if (q.hatEntwurf === '1') where.push("outreach_draft IS NOT NULL AND outreach_draft <> ''");
 
   // "Nachfassen faellig": kontaktiert, aber seit N Tagen nichts gehoert.
   if (q.kontaktVorTagen) {

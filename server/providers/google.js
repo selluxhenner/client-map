@@ -10,8 +10,30 @@
 
 const ENDPOINT = 'https://places.googleapis.com/v1/places:searchNearby';
 
+/** Was Google pro Anfrage höchstens zurückgibt. Harte Grenze der API. */
+const MAX_PRO_ANFRAGE = 20;
+
+/**
+ * Aktiv nur mit Schluessel - und abschaltbar, ohne ihn wieder herauszunehmen.
+ * GOOGLE_ENABLED=0 ist die Bremse fuer den Fall, dass die Rechnung laeuft
+ * und man erst schauen will.
+ */
 export function isEnabled() {
+  if (process.env.GOOGLE_ENABLED === '0') return false;
   return Boolean(process.env.GOOGLE_PLACES_KEY);
+}
+
+/** Was die Oberfläche über den Adapter sagen soll, ohne den Schlüssel zu zeigen. */
+export function adapterInfo() {
+  const key = process.env.GOOGLE_PLACES_KEY || '';
+  return {
+    schluesselHinterlegt: Boolean(key),
+    abgeschaltet: process.env.GOOGLE_ENABLED === '0',
+    maxProAnfrage: MAX_PRO_ANFRAGE,
+    hinweis: key
+      ? 'Google liefert höchstens 20 Treffer je Ausschnitt. Bei mehr wird gemeldet, dass gekappt wurde — dann kleinere Ausschnitte suchen.'
+      : 'Ohne GOOGLE_PLACES_KEY vollständig inaktiv. Die Karte läuft dann nur auf OpenStreetMap.',
+  };
 }
 
 const FIELDS = [
@@ -55,7 +77,7 @@ export async function fetchVenues({ south, west, north, east }) {
     },
     body: JSON.stringify({
       includedTypes: TYPES,
-      maxResultCount: 20,
+      maxResultCount: MAX_PRO_ANFRAGE,
       locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius } },
       languageCode: 'de',
     }),
@@ -64,8 +86,9 @@ export async function fetchVenues({ south, west, north, east }) {
 
   if (!res.ok) throw new Error(`Google Places ${res.status}: ${await res.text()}`);
   const json = await res.json();
+  const gefunden = json.places || [];
 
-  return (json.places || []).map((p) => ({
+  const betriebe = gefunden.map((p) => ({
     source: 'google',
     source_id: p.id,
     name: p.displayName?.text ?? 'Unbenannt',
@@ -86,6 +109,20 @@ export async function fetchVenues({ south, west, north, east }) {
     is_chain: 0,
     verified: 1,
   }));
+
+  // Genau 20 Treffer heisst fast immer: es gab mehr, Google hat abgeschnitten.
+  // Das muss auffallen, sonst haelt man einen halben Ausschnitt fuer
+  // vollstaendig und wundert sich spaeter ueber fehlende Laeden. Als Eigenschaft
+  // am Array, damit die Schnittstelle identisch zu overpass.js bleibt.
+  betriebe.gekappt = gefunden.length >= MAX_PRO_ANFRAGE;
+  if (betriebe.gekappt) {
+    console.warn(
+      `[google] ${gefunden.length} Treffer — Obergrenze pro Anfrage erreicht. ` +
+      'Der Ausschnitt enthält vermutlich mehr Betriebe; kleiner suchen.'
+    );
+  }
+
+  return betriebe;
 }
 
 function haversine(south, west, north, east) {

@@ -1,10 +1,10 @@
-import { el, clear, fail, debounce, formatDate } from './api.js';
+import { el, clear, get, fail, debounce, formatDate } from './api.js';
 import {
   state, loadConfig, loadVenues, on, setFilter, filterValue, select, scoreBandFor,
 } from './state.js';
 import { renderFilters } from './filters.js';
 import { initDetail, showVenue } from './detail.js';
-import { initJobs } from './jobs.js';
+import { initJobs, onVenueUpdate } from './jobs.js';
 
 const COLUMNS = [
   { key: 'score',            label: 'Score',     sort: 'score_desc', cell: scoreCell, cls: 'num' },
@@ -18,6 +18,7 @@ const COLUMNS = [
   { key: 'rating',           label: 'Bew.',      sort: null,         cell: ratingCell, cls: 'num' },
   { key: 'demo_path',        label: 'Demo',      sort: null,         cell: (v) => (v.demo_path ? '✓' : '–') },
   { key: 'last_contact_at',  label: 'Kontakt',   sort: 'contact',    cell: (v) => formatDate(v.last_contact_at) },
+  { key: 'follow_up_at',     label: 'Wiedervorlage', sort: 'wiedervorlage', cell: followUpCell },
 ];
 
 start().catch(fail);
@@ -44,8 +45,13 @@ async function start() {
   });
 
   on('filter', () => refresh());
-  on('venues', () => { drawTable(); drawStats(); });
+  on('venues', () => { drawTable(); drawStats(); drawFunnel(); });
   on('selection', highlight);
+
+  // Waehrend eines Tiefen-Scans aendern sich laufend Zeilen. Gesammelt neu
+  // laden statt bei jedem einzelnen Betrieb - sonst springt die Tabelle
+  // unter der Maus weg.
+  onVenueUpdate(debounce(() => refresh(), 1500));
 
   await refresh();
 }
@@ -154,6 +160,84 @@ function instaCell(v) {
 
 function ratingCell(v) {
   return v.rating ? `${v.rating} (${v.review_count ?? '?'})` : '–';
+}
+
+function followUpCell(v) {
+  if (!v.follow_up_at) return '–';
+  const datum = v.follow_up_at.slice(0, 10);
+  const faellig = datum <= new Date().toISOString().slice(0, 10);
+  return el('span', {
+    class: faellig ? 'faellig-marke' : '',
+    title: v.follow_up_note || '',
+  }, formatDate(v.follow_up_at) + (v.follow_up_note ? ' •' : ''));
+}
+
+/**
+ * Der Trichter zählt kumulativ: "so viele haben diese Stufe mindestens
+ * erreicht". Daneben steht, wie viel von der Stufe davor übrig blieb - das
+ * ist die Zahl, die zeigt, wo es klemmt.
+ */
+async function drawFunnel() {
+  const host = document.getElementById('funnel');
+  if (!host) return;
+  try {
+    const query = new URLSearchParams(state.lastQuery || state.filter);
+    query.delete('status');
+    const data = await get(`/venues/stats?${query}`);
+    const stufen = data.funnel || [];
+    const start = stufen[0]?.erreicht || 0;
+
+    clear(host).append(
+      ...stufen.map((s, i) => {
+        const meta = state.config.status[s.status];
+        const vorher = i ? stufen[i - 1].erreicht : null;
+        const quote = vorher ? Math.round((s.erreicht / vorher) * 100) : null;
+        return el('button', {
+          class: 'funnel-stufe',
+          title: `${meta.label}: ${s.erreicht} erreicht, ${s.aktuell} stehen aktuell hier` +
+            (quote != null ? ` · ${quote} % von „${state.config.status[stufen[i - 1].status].label}"` : ''),
+          onclick: () => setFilter('status', s.status),
+        }, [
+          el('b', {}, String(s.erreicht)),
+          el('span', {}, meta.label),
+          el('span', {
+            class: 'funnel-balken',
+            style: {
+              width: `${start ? Math.max(4, Math.round((s.erreicht / start) * 100)) : 4}%`,
+              background: meta.color,
+            },
+          }),
+          quote != null ? el('span', { class: 'funnel-quote' }, `${quote} %`) : null,
+        ]);
+      }),
+      data.wiedervorlage_faellig
+        ? el('button', {
+            class: 'funnel-stufe faellig',
+            title: 'Betriebe mit einer Wiedervorlage, die heute oder früher fällig war',
+            onclick: () => setFilter('wiedervorlage', 'faellig'),
+          }, [
+            el('b', {}, String(data.wiedervorlage_faellig)),
+            el('span', {}, '⏰ fällig'),
+          ])
+        : null,
+
+      // Wer den Trichter verlassen hat. Ohne diese Zahl geht die Rechnung
+      // nicht auf und man sucht die fehlenden Betriebe.
+      data.abgangGesamt
+        ? el('button', {
+            class: 'funnel-stufe abgang',
+            title: 'Aus dem Trichter ausgeschieden: ' +
+              data.abgang.map((a) => `${state.config.status[a.status]?.label || a.status} ${a.n}`).join(', '),
+            onclick: () => setFilter('status', data.abgang.map((a) => a.status).join(',')),
+          }, [
+            el('b', {}, String(data.abgangGesamt)),
+            el('span', {}, 'ausgeschieden'),
+          ])
+        : null
+    );
+  } catch {
+    /* Der Trichter ist Übersicht, kein Grund für eine Fehlermeldung. */
+  }
 }
 
 function highlight(id) {

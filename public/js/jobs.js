@@ -4,7 +4,7 @@
 
 import { el, clear, get, post, toast, fail } from './api.js';
 
-const KIND_ICON = { test: '🔌', analyse: '🔍', demo: '🔨' };
+const KIND_ICON = { test: '🔌', schnell: '⚡', analyse: '🔍', kontakt: '✍️', demo: '🔨' };
 
 const STATUS_STYLE = {
   wartend:     { label: 'Wartet',       color: '#94a3b8' },
@@ -25,10 +25,30 @@ const store = {
 let nodes = {};
 let source;
 const kindListeners = [];
+const venueListeners = [];
+const rawListeners = [];
 
 export function onKinds(fn) {
   kindListeners.push(fn);
   if (Object.keys(store.kinds).length) fn(store.kinds);
+}
+
+/**
+ * Meldet Betriebe, die ein Auftrag gerade veraendert hat. Karte und
+ * Detail-Panel haengen sich daran, damit der Pin nach einer Analyse von
+ * selbst umspringt - ohne dass man neu laden muss.
+ */
+export function onVenueUpdate(fn) {
+  venueListeners.push(fn);
+}
+
+/**
+ * Alles, was der Server ueber den Ereignisstrom schickt - roh. Die
+ * Fortschrittsanzeige haengt sich daran, weil sie sowohl Aufträge als auch
+ * Bereichssuchen mitverfolgt.
+ */
+export function onServerEvent(fn) {
+  rawListeners.push(fn);
 }
 
 export async function initJobs() {
@@ -57,6 +77,64 @@ export async function startJob(kind, venueId = null) {
   }
 }
 
+/**
+ * Stapellauf ueber einen Filter. Fragt erst trocken nach, wie viel das
+ * betrifft, und laesst dich dann entscheiden - ein Tiefen-Scan ist der
+ * einzige Knopf in der App, der auf einen Schlag Stunden Kontingent kosten
+ * kann.
+ */
+export async function startBatch(kind, filter) {
+  try {
+    const vorschau = await post('/jobs/batch', { kind, filter, dryRun: true });
+
+    if (!vorschau.kandidaten) {
+      toast('Hier ist nichts zu analysieren — alles schon geprüft.');
+      return null;
+    }
+    if (!vorschau.eingereiht) {
+      toast(
+        vorschau.laeuftSchon === vorschau.kandidaten
+          ? 'Für diese Betriebe läuft die Analyse bereits.'
+          : `Tageslimit erreicht (${vorschau.heute}/${vorschau.dailyLimit}).`,
+        'err'
+      );
+      return null;
+    }
+
+    const zeilen = [
+      `${vorschau.kandidaten} Betriebe im aktuellen Ausschnitt (ungeprüfte, wenn du nichts anderes gefiltert hast).`,
+      `${vorschau.eingereiht} davon werden jetzt geprüft — ${vorschau.label}, Modell ${store.kinds[kind]?.model || '?'}.`,
+      dauerSchaetzung(kind, vorschau.eingereiht),
+      vorschau.uebrig ? `${vorschau.uebrig} bleiben für später übrig.` : null,
+      vorschau.laeuftSchon ? `${vorschau.laeuftSchon} laufen bereits.` : null,
+      `Heute bisher: ${vorschau.heute}/${vorschau.dailyLimit}.`,
+      '',
+      'Starten?',
+    ].filter(Boolean);
+
+    if (!confirm(zeilen.join('\n'))) return null;
+
+    const bericht = await post('/jobs/batch', { kind, filter });
+    toast(`${bericht.eingereiht} Analysen eingereiht`);
+    await reload();
+    toggleDrawer(true);
+    return bericht;
+  } catch (err) {
+    fail(err);
+    return null;
+  }
+}
+
+/** Grobe Laufzeit eines Stapels: Erfahrungswert je Auftrag durch Parallelität. */
+function dauerSchaetzung(kind, anzahl) {
+  const proStueck = store.kinds[kind]?.typischS;
+  if (!proStueck || !anzahl) return null;
+  const gleichzeitig = Math.max(1, store.queue?.concurrency || 1);
+  const minuten = Math.ceil((anzahl * proStueck) / gleichzeitig / 60);
+  return `Dauert ungefähr ${minuten} Minute${minuten === 1 ? '' : 'n'} ` +
+    `(~${proStueck} s pro Betrieb, ${gleichzeitig} gleichzeitig).`;
+}
+
 // --- Aufbau ---------------------------------------------------------------
 
 function build() {
@@ -81,6 +159,7 @@ async function reload() {
   store.kinds = data.kinds;
   store.queue = data.queue;
   store.claudeBin = data.claudeBin;
+  store.abrechnung = data.abrechnung;
   kindListeners.forEach((fn) => fn(store.kinds));
   render();
 }
@@ -91,6 +170,7 @@ function connect() {
 
   source.onmessage = (e) => {
     const payload = JSON.parse(e.data);
+    rawListeners.forEach((fn) => fn(payload));
 
     if (payload.type === 'queue') {
       store.queue = payload.state;
@@ -104,6 +184,10 @@ function connect() {
       renderHead();
       renderList();
       if (store.selected === payload.job.id) renderLog();
+      return;
+    }
+    if (payload.type === 'venue') {
+      venueListeners.forEach((fn) => fn(payload.venue));
       return;
     }
     if (payload.type === 'log') {
@@ -139,8 +223,19 @@ function renderHead() {
       `${running}/${q.concurrency} laufen · heute ${Object.entries(q.heute || {})
         .map(([k, n]) => `${store.kinds[k]?.label || k}: ${n}`)
         .join(' · ') || 'nichts'}`),
+    abrechnungsHinweis(),
     el('span', { class: 'spacer' }),
     ...availableKindButtons(),
+    wartende()
+      ? el('button', {
+          class: 'btn sm danger',
+          title: 'Bricht alles ab, was noch nicht angefangen hat. Laufende bleiben.',
+          onclick: async () => {
+            const res = await post('/jobs/cancel-waiting').catch(fail);
+            if (res) { toast(`${res.abgebrochen} aus der Warteschlange entfernt`); reload(); }
+          },
+        }, `Warteschlange leeren (${wartende()})`)
+      : null,
     el('button', { class: 'btn sm ghost', onclick: () => toggleDrawer(false) }, '✕')
   );
 
@@ -163,6 +258,35 @@ function renderHead() {
     nodes.toggle.textContent = running ? `⚙ ${running}` : '⚙';
     nodes.toggle.classList.toggle('primary', running > 0);
   }
+}
+
+/**
+ * Läuft das über das Abo oder über eine Rechnung? Steht im Kopf, weil die
+ * Antwort darüber entscheidet, ob ein Stapellauf harmlos ist.
+ */
+function abrechnungsHinweis() {
+  const a = store.abrechnung;
+  if (!a) return null;
+
+  if (a.ueberAbo) {
+    return el('span', {
+      class: 'badge',
+      style: { background: 'var(--accent-soft)', color: 'var(--accent)' },
+      title: `Angemeldet über ${a.weg}. Aufträge laufen gegen dein Kontingent, nicht gegen eine Rechnung. Die Dollarwerte sind ein Verbrauchsmass.`,
+    }, `${a.abo === 'max' ? 'Max' : a.abo || 'Abo'}-Abo`);
+  }
+
+  return el('span', {
+    class: 'badge',
+    style: { background: 'var(--warn-soft)', color: 'var(--warn)' },
+    title: a.angemeldet
+      ? 'Nicht über ein Abo angemeldet — jeder Auftrag erzeugt echte API-Kosten.'
+      : 'Die Claude-CLI ist nicht angemeldet. Aufträge werden fehlschlagen: einmal "claude auth login" ausführen.',
+  }, a.angemeldet ? 'API-Abrechnung' : 'nicht angemeldet');
+}
+
+function wartende() {
+  return store.jobs.filter((j) => j.status === 'wartend').length;
 }
 
 function availableKindButtons() {
@@ -283,6 +407,8 @@ function renderEvent(e) {
     case 'rate':
       return el('div', { class: 'log-line warn' },
         `Kontingent: ${e.info?.status} (${e.info?.rateLimitType || '–'})`);
+    case 'warn':
+      return el('div', { class: 'log-line warn' }, `⚠ ${e.text}`);
     case 'stderr':
       return el('div', { class: 'log-line err' }, e.text);
     case 'result':

@@ -8,13 +8,20 @@
 export const STATUS = {
   neu:          { label: 'Neu',          color: '#94a3b8', hint: 'Gefunden, noch nichts gemacht' },
   recherchiert: { label: 'Recherchiert', color: '#3b82f6', hint: 'Analyse liegt vor' },
+  // Die eigene Entscheidung, nicht die des Betriebs: den nehme ich mir vor.
+  // Deshalb darf kein Agentenlauf diesen Status ueberschreiben.
+  interessiert: { label: 'Interessiert', color: '#6366f1', hint: 'Von mir vorgemerkt: Demo bauen und ansprechen' },
   demo_gebaut:  { label: 'Demo gebaut',  color: '#8b5cf6', hint: 'Demo-Website existiert' },
   kontaktiert:  { label: 'Kontaktiert',  color: '#f97316', hint: 'Angeschrieben' },
   in_gespraech: { label: 'Im Gespräch',  color: '#eab308', hint: 'Im Gespräch / Termin' },
   kunde:        { label: 'Kunde',        color: '#22c55e', hint: 'Aktiver Kunde' },
   pausiert:     { label: 'Pausiert',     color: '#14b8a6', hint: 'War Kunde, aktuell gestoppt' },
   abgelehnt:    { label: 'Abgelehnt',    color: '#ef4444', hint: 'Flop, kein Interesse' },
-  kein_fit:     { label: 'Kein Fit',     color: '#475569', hint: 'Geschlossen, Kette, zu klein' },
+  // Kein Mangel, sondern kein Bedarf - und damit der einzige "Nein"-Status,
+  // der in zwei Jahren wieder ein Ja werden kann.
+  website_gut:  { label: 'Website schon gut', color: '#78716c', hint: 'Kein Bedarf — hat eine gute, aktuelle Website' },
+  kein_fit:     { label: 'Kein Fit',     color: '#475569', hint: 'Kette, zu klein, passt nicht' },
+  geschlossen:  { label: 'Geschlossen',  color: '#1f2937', hint: 'Betrieb existiert nicht mehr (Konkurs, Aufgabe)' },
 };
 
 export const STATUS_KEYS = Object.keys(STATUS);

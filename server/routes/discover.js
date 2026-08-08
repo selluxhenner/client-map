@@ -3,6 +3,7 @@ import * as overpass from '../providers/overpass.js';
 import * as google from '../providers/google.js';
 import { geocode } from '../providers/nominatim.js';
 import { upsertDiscovered } from '../lib/venue-store.js';
+import { publish } from '../lib/bus.js';
 import { db } from '../db.js';
 
 export const discoverRouter = Router();
@@ -34,12 +35,17 @@ discoverRouter.post('/discover', async (req, res, next) => {
       });
     }
 
+    // Die Suche dauert je nach Auslastung von Overpass zwischen zwei und
+    // sechzig Sekunden. Ohne Zwischenstand sieht das aus wie ein Absturz,
+    // deshalb meldet jeder Abschnitt, dass er begonnen hat.
+    publish({ type: 'discover', phase: 'overpass', bbox });
     const found = await overpass.fetchVenues(bbox);
 
     // Google liefert Bewertungen und verifizierte Website-URLs. Laeuft nur,
     // wenn ein Key hinterlegt ist - sonst stillschweigend uebersprungen.
     let fromGoogle = [];
     if (google.isEnabled()) {
+      publish({ type: 'discover', phase: 'google', gefunden: found.length });
       try {
         fromGoogle = await google.fetchVenues(bbox);
       } catch (err) {
@@ -47,6 +53,11 @@ discoverRouter.post('/discover', async (req, res, next) => {
       }
     }
 
+    publish({
+      type: 'discover',
+      phase: 'speichern',
+      gefunden: found.length + fromGoogle.length,
+    });
     const result = upsertDiscovered([...found, ...fromGoogle]);
 
     db.prepare(
@@ -54,12 +65,18 @@ discoverRouter.post('/discover', async (req, res, next) => {
        VALUES (@south, @west, @north, @east, @found)`
     ).run({ ...bbox, found: found.length + fromGoogle.length });
 
-    res.json({
+    const bericht = {
       ...result,
       found: found.length + fromGoogle.length,
       quellen: { osm: found.length, google: fromGoogle.length },
-    });
+      // Google gibt hoechstens 20 Treffer je Anfrage. Wurde gekappt, ist der
+      // Ausschnitt NICHT vollstaendig - das muss in der Oberflaeche stehen.
+      gekappt: Boolean(fromGoogle.gekappt),
+    };
+    publish({ type: 'discover', phase: 'fertig', ...bericht });
+    res.json(bericht);
   } catch (err) {
+    publish({ type: 'discover', phase: 'fehler', meldung: err.message });
     next(err);
   }
 });

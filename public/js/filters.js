@@ -7,12 +7,15 @@ import {
   replaceFilter, clearFilter, savableQuery, on,
 } from './state.js';
 
+let sidebar;
+
 export function renderFilters(host, { showBboxToggle = false } = {}) {
+  sidebar = host;
   const draw = () => build(host, { showBboxToggle });
   draw();
   on('filter', draw);
-  on('venues', () => refreshCounts(host));
-  refreshCounts(host);
+  on('venues', () => refreshCounts());
+  refreshCounts();
 }
 
 function build(host, opts) {
@@ -121,6 +124,8 @@ function build(host, opts) {
       ]),
       el('div', { class: 'checks' }, [
         toggle('Nur mit Demo', 'hasDemo', '1'),
+        toggle('Nur mit Kontakt-Entwurf', 'hatEntwurf', '1'),
+        toggle('Wiedervorlage fällig', 'wiedervorlage', 'faellig'),
         toggle('Nur ohne Website-Link', 'hasWebsite', '0'),
         toggle('Geschlossene mitzeigen', 'includeClosed', '1'),
         opts.showBboxToggle && toggle('Nur im Kartenausschnitt', 'nurAusschnitt', '1'),
@@ -241,12 +246,21 @@ async function saveCurrent(sidebar, opts) {
   }
 }
 
-/** Zahlen neben den Status-Kaestchen - zeigt, wie viel jeder Status hergibt. */
-async function refreshCounts(host) {
-  const target = host.querySelector('[data-role="status-checks"]');
+/**
+ * Zahlen neben den Status-Kaestchen.
+ *
+ * Gezaehlt wird ueber genau dieselbe Abfrage, mit der die Betriebe geladen
+ * wurden - inklusive Kartenausschnitt. Sonst zeigt die Karte 40 Pins und
+ * daneben steht 188, und man traut den Zahlen nicht mehr.
+ *
+ * Um die Sonderbehandlung geschlossener Betriebe kuemmert sich der Server:
+ * jede Zahl ist das, was ein Klick auf dieses Kaestchen zeigen wuerde.
+ */
+export async function refreshCounts() {
+  const target = sidebar?.querySelector('[data-role="status-checks"]');
   if (!target) return;
   try {
-    const query = new URLSearchParams(state.filter);
+    const query = new URLSearchParams(state.lastQuery || state.filter);
     query.delete('status');
     const data = await get(`/venues/stats?${query}`);
     for (const node of target.querySelectorAll('.count')) {

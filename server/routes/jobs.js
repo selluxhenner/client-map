@@ -2,18 +2,23 @@ import { Router } from 'express';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_DIR } from '../db.js';
-import { bus, enqueue, cancel, getJob, listJobs, queueState, resume } from '../jobs/queue.js';
+import { bus } from '../lib/bus.js';
+import {
+  enqueue, enqueueBatch, cancel, cancelWaiting, getJob, listJobs, queueState, resume,
+} from '../jobs/queue.js';
 import { publicKinds } from '../jobs/kinds.js';
-import { claudeBin } from '../jobs/runner.js';
+import { claudeBin, abrechnung } from '../jobs/runner.js';
+import { listVenues } from '../lib/venue-store.js';
 
 export const jobsRouter = Router();
 
-jobsRouter.get('/jobs', (req, res) => {
+jobsRouter.get('/jobs', async (req, res) => {
   res.json({
     jobs: listJobs({ limit: req.query.limit }),
     queue: queueState(),
     kinds: publicKinds(),
     claudeBin: claudeBin(),
+    abrechnung: await abrechnung(),
   });
 });
 
@@ -48,9 +53,49 @@ jobsRouter.post('/jobs', (req, res, next) => {
   }
 });
 
+/**
+ * Tiefen-Scan: alle Betriebe eines Filters auf einmal analysieren lassen.
+ *
+ * Der Filter ist derselbe wie fuer Karte, Liste und Export - was du auf dem
+ * Bildschirm siehst, ist genau das, was in die Schlange geht. Voreingestellt
+ * sind die ungeprueften Betriebe, weil ein zweiter Lauf ueber bereits
+ * recherchierte Laeden nur Kontingent kostet.
+ *
+ * `dryRun: true` liefert dieselben Zahlen, ohne etwas einzureihen - damit die
+ * Rueckfrage in der Oberflaeche echte Zahlen nennen kann.
+ */
+jobsRouter.post('/jobs/batch', (req, res, next) => {
+  try {
+    const { kind = 'analyse', filter = {}, max, dryRun = false } = req.body || {};
+
+    const { venues } = listVenues({
+      verified: '0',
+      ...filter,
+      sort: 'score_desc',
+      limit: 1000,
+    });
+
+    res.json({
+      ...enqueueBatch({
+        kind,
+        venueIds: venues.map((v) => v.id),
+        max,
+        dryRun: Boolean(dryRun),
+      }),
+      gefiltert: venues.length,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 jobsRouter.post('/jobs/resume', (_req, res) => {
   resume();
   res.json(queueState());
+});
+
+jobsRouter.post('/jobs/cancel-waiting', (_req, res) => {
+  res.json({ abgebrochen: cancelWaiting(), queue: queueState() });
 });
 
 jobsRouter.get('/jobs/:id', (req, res) => {

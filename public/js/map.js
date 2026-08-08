@@ -1,10 +1,11 @@
 import { el, clear, get, post, toast, fail, isLight, debounce } from './api.js';
 import {
-  state, loadConfig, loadVenues, on, filterValue, select, scoreBandFor,
+  state, loadConfig, loadVenues, on, filterValue, select, scoreBandFor, upsertLocal,
 } from './state.js';
-import { renderFilters } from './filters.js';
+import { renderFilters, refreshCounts } from './filters.js';
 import { initDetail, showVenue } from './detail.js';
-import { initJobs } from './jobs.js';
+import { initJobs, startBatch, onVenueUpdate } from './jobs.js';
+import { initScanStatus, scanBegin, scanEnd, trackBatch } from './scan-status.js';
 
 let map;
 let cluster;
@@ -29,9 +30,14 @@ async function start() {
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
     disableClusteringAtZoom: 17,
+    // Bei tausenden Pins wuerde das Einhaengen in einem Zug die Oberflaeche
+    // sekundenlang einfrieren. Stueckweise bleibt sie bedienbar.
+    chunkedLoading: true,
+    chunkInterval: 100,
   }).addTo(map);
 
   initDetail(document.getElementById('detail'), { onVenueChange: onVenueChanged });
+  initScanStatus(document.querySelector('.workspace'));
   renderFilters(document.getElementById('filters'), { showBboxToggle: true });
   wireTopbar();
   initJobs().catch(fail);
@@ -39,6 +45,18 @@ async function start() {
   on('filter', () => refresh());
   on('venues', () => { drawMarkers(); drawStats(); });
   on('selection', (id) => highlight(id));
+
+  // Ein fertig analysierter Betrieb springt sofort um: neuer Score, neuer
+  // Ring, gegebenenfalls neue Farbe. Die Zahlen in der Filterleiste ziehen
+  // gesammelt nach - waehrend eines Stapellaufs aendern sich Dutzende, und
+  // jede einzelne Zaehlung waere eine eigene Serveranfrage.
+  const zahlenNachziehen = debounce(() => refreshCounts(), 1200);
+  onVenueUpdate((venue) => {
+    upsertLocal(venue);
+    markers.get(venue.id)?.setIcon(iconFor(venue));
+    drawStats();
+    zahlenNachziehen();
+  });
 
   map.on('moveend', debounce(() => {
     if (filterValue('nurAusschnitt') === '1') refresh();
@@ -59,9 +77,37 @@ function bboxParam() {
   return [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].join(',');
 }
 
+/**
+ * Obergrenze fuer die Karte. Darueber hinaus wird gekappt und das auch gesagt -
+ * gemessen sind 10 000 Pins bei schlanker Nutzlast rund 1,2 MB und mit
+ * stueckweisem Einhaengen bedienbar, aber irgendwo muss die Grenze sein.
+ */
+const MAX_PINS = 8000;
+
 async function refresh() {
   try {
-    await loadVenues({ bbox: filterValue('nurAusschnitt') === '1' ? bboxParam() : '' });
+    const data = await loadVenues({
+      bbox: filterValue('nurAusschnitt') === '1' ? bboxParam() : '',
+      // Die Karte braucht sieben Spalten, nicht dreissig. Den Rest holt das
+      // Detail-Panel beim Anklicken.
+      felder: 'karte',
+      limit: MAX_PINS,
+    });
+    if (data.gekappt) {
+      toast(`${data.returned} von ${data.total} Pins gezeigt — näher zoomen oder filtern`, 'err');
+    }
+  } catch (err) {
+    fail(err);
+  }
+}
+
+/**
+ * Voller Datensatz fuer das Panel. Die Karte kennt nur die schlanke Fassung,
+ * und Notizen oder Analyse stehen nicht darin.
+ */
+async function oeffnen(id) {
+  try {
+    showVenue(await get(`/venues/${id}`));
   } catch (err) {
     fail(err);
   }
@@ -96,7 +142,7 @@ function drawMarkers() {
     });
     marker.on('click', () => {
       select(v.id);
-      showVenue(v);
+      oeffnen(v.id);
     });
     markers.set(v.id, marker);
     return marker;
@@ -179,17 +225,38 @@ function wireTopbar() {
     const b = map.getBounds();
     scanBtn.disabled = true;
     scanBtn.textContent = 'Suche läuft …';
+    scanBegin('Bereich wird durchsucht', 'Anfrage wird gestellt …');
     try {
       const res = await post('/discover', {
         south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast(),
       });
-      toast(`${res.found} gefunden · ${res.inserted} neu · ${res.updated} ergänzt`);
       await refresh();
+      scanEnd(
+        `${res.found} gefunden · ${res.inserted} neu · ${res.updated} ergänzt · ` +
+        `${res.skipped} unverändert`
+      );
     } catch (err) {
-      fail(err);
+      scanEnd(err.message, { fehler: true });
     } finally {
       scanBtn.disabled = false;
       scanBtn.textContent = 'Diesen Bereich durchsuchen';
+    }
+  });
+
+  // Tiefen-Scan: derselbe Filter wie die Karte, plus der Ausschnitt, den man
+  // gerade sieht. Was nicht im Bild ist, wird auch nicht analysiert - sonst
+  // reiht ein Klick versehentlich den halben Kanton ein.
+  document.getElementById('deep-scan').addEventListener('click', async () => {
+    const filter = Object.fromEntries(new URLSearchParams(state.filter));
+    delete filter.nurAusschnitt;
+    filter.bbox = bboxParam();
+
+    // Fuer den ganzen Ausschnitt der Schnell-Check: er beantwortet genau die
+    // Fragen, die den Score bewegen. Die volle Analyse startest du gezielt
+    // bei den Laeden, die dabei oben landen.
+    const bericht = await startBatch('schnell', filter);
+    if (bericht?.ids?.length) {
+      trackBatch(bericht.ids, `${bericht.ids.length} Betriebe werden bewertet`);
     }
   });
 
@@ -234,7 +301,7 @@ on('venues', () => {
   if (!venue) return;
   map.setView([venue.lat, venue.lng], Math.max(map.getZoom(), 17));
   select(venue.id);
-  showVenue(venue);
+  oeffnen(venue.id);
   const url = new URL(location.href);
   url.searchParams.delete('fokus');
   history.replaceState(null, '', url);

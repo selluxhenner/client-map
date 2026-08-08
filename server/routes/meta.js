@@ -3,6 +3,7 @@ import { db } from '../db.js';
 import {
   STATUS, WEBSITE_STATUS, INSTAGRAM_STATUS, SCORE_BANDS,
 } from '../scoring.js';
+import { CHANNELS, OUTCOMES, FUNNEL } from '../crm.js';
 import { isEnabled as googleEnabled } from '../providers/google.js';
 
 export const metaRouter = Router();
@@ -16,6 +17,9 @@ metaRouter.get('/config', (_req, res) => {
     websiteStatus: WEBSITE_STATUS,
     instagramStatus: INSTAGRAM_STATUS,
     scoreBands: SCORE_BANDS,
+    channels: CHANNELS,
+    outcomes: OUTCOMES,
+    funnel: FUNNEL,
     google: googleEnabled(),
     map: {
       lat: Number(process.env.MAP_START_LAT) || 47.4628,

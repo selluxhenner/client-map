@@ -3,6 +3,7 @@
 
 import { db, rowToVenue } from '../db.js';
 import { computeScore } from '../scoring.js';
+import { FUNNEL, FUNNEL_ALIAS } from '../crm.js';
 import { buildVenueQuery } from './filters.js';
 
 const EDITABLE = [
@@ -12,18 +13,47 @@ const EDITABLE = [
   'website_status', 'instagram_status', 'rating', 'review_count',
   'is_chain', 'permanently_closed', 'verified',
   'status', 'priority', 'notes', 'tags',
-  'demo_path', 'analysis_path', 'last_contact_at', 'last_analysis_at',
+  'demo_path', 'analysis_path', 'analysis_summary', 'analysis_kind',
+  'last_contact_at', 'last_analysis_at', 'follow_up_at', 'follow_up_note',
+  // Vom Agenten geschrieben, wie analysis_summary - laeuft aber durch denselben
+  // Weg, damit es keinen zweiten Schreibpfad auf venues gibt.
+  'outreach_draft', 'outreach_draft_at',
 ];
 
 const BOOLEANS = new Set(['is_chain', 'permanently_closed', 'verified']);
 
+/**
+ * Was die Karte von einem Betrieb tatsaechlich braucht.
+ *
+ * Gemessen bei 10 000 Betrieben: die vollen Zeilen sind 9,4 MB JSON, diese
+ * sieben Spalten 1,2 MB - 87 Prozent weniger. Den Rest holt das Detail-Panel
+ * beim Anklicken einzeln nach, und das ist ohnehin der Moment, in dem er
+ * gebraucht wird.
+ */
+const KARTEN_FELDER = 'id, name, lat, lng, score, status, verified, city, venue_type';
+
 export function listVenues(query) {
   const { sql, params, orderBy, limit, offset } = buildVenueQuery(query);
+  const schlank = query?.felder === 'karte';
+
   const rows = db
-    .prepare(`SELECT * FROM venues ${sql} ORDER BY ${orderBy} LIMIT @limit OFFSET @offset`)
+    .prepare(
+      `SELECT ${schlank ? KARTEN_FELDER : '*'} FROM venues ${sql}
+       ORDER BY ${orderBy} LIMIT @limit OFFSET @offset`
+    )
     .all({ ...params, limit, offset });
+
   const total = db.prepare(`SELECT COUNT(*) AS n FROM venues ${sql}`).get(params).n;
-  return { venues: rows.map(rowToVenue), total, returned: rows.length };
+
+  return {
+    venues: schlank ? rows.map((r) => ({ ...r, verified: Boolean(r.verified) })) : rows.map(rowToVenue),
+    total,
+    returned: rows.length,
+    // Ehrlich melden, wenn nicht alles mitgekommen ist. Ohne das zeigt die
+    // Karte 2000 Pins und die Kopfzeile daneben 10000.
+    gekappt: rows.length < total,
+    felder: schlank ? 'karte' : 'alle',
+  };
 }
 
 export function getVenue(id) {
@@ -147,21 +177,85 @@ export function upsertDiscovered(found) {
 
 export function stats(query = {}) {
   const { sql, params } = buildVenueQuery(query);
+
+  // Die Zahl neben einem Status soll genau das sein, was ein Klick darauf
+  // zeigt. Fuer jeden Status heisst das "ohne dauerhaft geschlossene", fuer
+  // 'geschlossen' selbst genau umgekehrt. Deshalb wird das hier pro Zeile
+  // entschieden und nicht fuer die ganze Abfrage - sonst steht das Kaestchen
+  // "Geschlossen" ewig auf 0, oder die Summe links passt nicht zur Karte.
+  const jeStatus = buildVenueQuery({ ...query, status: '', includeClosed: '1' });
   const byStatus = db
-    .prepare(`SELECT status, COUNT(*) AS n FROM venues ${sql} GROUP BY status`)
-    .all(params);
+    .prepare(
+      `SELECT status, COUNT(*) AS n FROM venues
+       ${jeStatus.sql || 'WHERE 1=1'}
+         AND (permanently_closed = 0 OR status = 'geschlossen')
+       GROUP BY status`
+    )
+    .all(jeStatus.params);
   const totals = db
     .prepare(
       `SELECT COUNT(*) AS total,
               SUM(CASE WHEN score >= 70 THEN 1 ELSE 0 END) AS heiss,
               SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) AS verifiziert,
-              SUM(CASE WHEN demo_path IS NOT NULL AND demo_path <> '' THEN 1 ELSE 0 END) AS demos
+              SUM(CASE WHEN demo_path IS NOT NULL AND demo_path <> '' THEN 1 ELSE 0 END) AS demos,
+              SUM(CASE WHEN follow_up_at IS NOT NULL
+                        AND date(follow_up_at) <= date('now', 'localtime')
+                       THEN 1 ELSE 0 END) AS wiedervorlage_faellig,
+              SUM(CASE WHEN outreach_draft IS NOT NULL AND outreach_draft <> ''
+                       THEN 1 ELSE 0 END) AS entwuerfe
        FROM venues ${sql}`
     )
     .get(params);
+
   return {
     ...totals,
     byStatus: Object.fromEntries(byStatus.map((r) => [r.status, r.n])),
+    ...funnelOf(query),
+  };
+}
+
+/**
+ * Der Funnel zaehlt kumulativ: "wie viele haben diese Stufe mindestens
+ * erreicht". Ein Kunde ist auch kontaktiert worden - haette man ihn nur in
+ * seiner aktuellen Stufe, sähe der Trichter breiter aus, als er ist, und die
+ * Abbruchquoten wären falsch.
+ *
+ * Endzustaende stehen nicht im Trichter - wer abgelehnt hat, ist kein halber
+ * Kunde. Sie werden als `abgang` daneben gemeldet, damit die Rechnung
+ * aufgeht: Trichterspitze + Abgang = alle Betriebe im Filter.
+ */
+function funnelOf(query = {}) {
+  const { sql, params } = buildVenueQuery({ ...query, status: '' });
+  const zeilen = db
+    .prepare(`SELECT status, COUNT(*) AS n FROM venues ${sql} GROUP BY status`)
+    .all(params);
+  const je = Object.fromEntries(zeilen.map((r) => [r.status, r.n]));
+
+  // Status, die eine Stufe erreicht haben, ohne selbst eine zu sein
+  // (pausiert = war Kunde), dort dazuzaehlen.
+  const erreichtIn = { ...je };
+  for (const [status, stufe] of Object.entries(FUNNEL_ALIAS)) {
+    if (!je[status]) continue;
+    erreichtIn[stufe] = (erreichtIn[stufe] || 0) + je[status];
+    delete erreichtIn[status];
+  }
+
+  const funnel = FUNNEL.map((stufe, i) => ({
+    status: stufe,
+    // Alles ab dieser Stufe - wer weiter ist, war auch hier.
+    erreicht: FUNNEL.slice(i).reduce((summe, s) => summe + (erreichtIn[s] || 0), 0),
+    aktuell: je[stufe] || 0,
+  }));
+
+  const abgang = Object.entries(je)
+    .filter(([status]) => !FUNNEL.includes(status) && !FUNNEL_ALIAS[status])
+    .map(([status, n]) => ({ status, n }))
+    .sort((a, b) => b.n - a.n);
+
+  return {
+    funnel,
+    abgang,
+    abgangGesamt: abgang.reduce((summe, a) => summe + a.n, 0),
   };
 }
 

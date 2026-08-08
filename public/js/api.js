@@ -8,8 +8,24 @@ export async function api(path, options = {}) {
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   if (res.status === 204) return null;
+
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // Der haeufigste Fall dahinter: die Seite im Browser ist neu, der
+      // Node-Prozess laeuft aber noch mit altem Code und kennt die Adresse
+      // nicht. Express antwortet dann mit einer HTML-Fehlerseite.
+      throw new Error(
+        res.status === 404
+          ? `Diese Server-Adresse kennt der Server nicht (${path}). Läuft er noch mit altem Code? Einmal beenden und "npm start" neu starten.`
+          : `Der Server hat keine gültige Antwort geschickt (${res.status} ${res.statusText}).`
+      );
+    }
+  }
+
   if (!res.ok) throw new Error(data?.error || `${res.status} ${res.statusText}`);
   return data;
 }

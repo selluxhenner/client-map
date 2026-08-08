@@ -6,7 +6,8 @@
   "description": "ServiWeb Client-Map - Gastro-Akquise auf der Karte",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node --watch server/index.js"
+    "dev": "node --watch server/index.js",
+    "stop": "node server/stop.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",

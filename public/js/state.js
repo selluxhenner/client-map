@@ -12,6 +12,11 @@ export const state = {
   venues: [],
   total: 0,
   selectedId: null,
+  // Die Abfrage, mit der die aktuell gezeigten Betriebe geladen wurden -
+  // inklusive des Kartenausschnitts, der nicht im Filter steht. Alles, was
+  // Zahlen zu diesen Betrieben anzeigt, muss dieselbe Abfrage benutzen, sonst
+  // stehen links andere Werte als auf der Karte.
+  lastQuery: '',
 };
 
 const listeners = { filter: [], venues: [], selection: [] };
@@ -90,6 +95,7 @@ export async function loadVenues(extra = {}) {
     if (value == null || value === '') query.delete(key);
     else query.set(key, value);
   }
+  state.lastQuery = query.toString();
   const data = await get(`/venues?${query}`);
   state.venues = data.venues;
   state.total = data.total;
