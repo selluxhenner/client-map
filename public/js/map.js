@@ -4,6 +4,7 @@ import {
 } from './state.js';
 import { renderFilters } from './filters.js';
 import { initDetail, showVenue } from './detail.js';
+import { initJobs } from './jobs.js';
 
 let map;
 let cluster;
@@ -33,6 +34,7 @@ async function start() {
   initDetail(document.getElementById('detail'), { onVenueChange: onVenueChanged });
   renderFilters(document.getElementById('filters'), { showBboxToggle: true });
   wireTopbar();
+  initJobs().catch(fail);
 
   on('filter', () => refresh());
   on('venues', () => { drawMarkers(); drawStats(); });

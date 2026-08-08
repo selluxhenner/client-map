@@ -412,6 +412,90 @@ table.data td.name { font-weight: 550; white-space: normal; min-width: 190px; }
 
 .busy { position: relative; pointer-events: none; opacity: .6; }
 
+/* ---------- Auftrags-Schublade ---------- */
+
+.jobs-drawer {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: 46vh;
+  min-height: 260px;
+  background: var(--panel);
+  border-top: 1px solid var(--line-strong);
+  box-shadow: 0 -8px 32px rgba(15, 23, 42, .14);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform .2s ease;
+}
+.jobs-drawer.open { transform: none; }
+
+.jobs-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.jobs-meta { color: var(--ink-mute); font-size: 12px; }
+.jobs-paused { margin: 8px 12px 0; }
+
+.jobs-body {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 0;
+  flex: 1;
+}
+
+.jobs-list { overflow-y: auto; border-right: 1px solid var(--line); }
+.job-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+.job-row:hover { background: var(--bg); }
+.job-row.on { background: var(--accent-soft); }
+.job-icon { font-size: 15px; flex: none; }
+.job-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.job-title { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-sub { color: var(--ink-mute); font-size: 11.5px; }
+
+.jobs-log { display: flex; flex-direction: column; min-height: 0; }
+.log-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.log-stream {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-family: "Cascadia Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.log-line { padding: 1px 0; white-space: pre-wrap; word-break: break-word; }
+.log-line.meta { color: var(--ink-mute); }
+.log-line.tool { color: #7c3aed; }
+.log-line.warn { color: var(--warn); font-weight: 600; }
+.log-line.err  { color: var(--danger); }
+.log-line.ok   { color: var(--accent); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .jobs-body { grid-template-columns: 1fr; }
+  .jobs-list { max-height: 34%; border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
 @media (max-width: 900px) {
   .workspace { grid-template-columns: 1fr; }
   .sidebar { position: absolute; inset: 0 auto 0 0; width: var(--sidebar); z-index: 800; transform: translateX(-100%); transition: transform .18s; }

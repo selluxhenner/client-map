@@ -4,6 +4,7 @@ import {
 } from './state.js';
 import { renderFilters } from './filters.js';
 import { initDetail, showVenue } from './detail.js';
+import { initJobs } from './jobs.js';
 
 const COLUMNS = [
   { key: 'score',            label: 'Score',     sort: 'score_desc', cell: scoreCell, cls: 'num' },
@@ -26,6 +27,7 @@ async function start() {
 
   initDetail(document.getElementById('detail'), { onVenueChange: onVenueChanged });
   renderFilters(document.getElementById('filters'));
+  initJobs().catch(fail);
 
   const quick = document.getElementById('quick');
   quick.value = filterValue('q');

@@ -153,6 +153,20 @@ const migrations = [
       update.run(row.city.replace(/\s*\(([A-Z]{2})\)\s*$/, ' $1').replace(/\s+/g, ' ').trim(), row.id);
     }
   },
+
+  // 3 - Was ein Agent-Lauf hinterher berichtet. total_cost_usd liefert die
+  //     CLI auch im Max-Abo; es ist dort keine Rechnung, sondern ein Mass
+  //     fuer den Verbrauch.
+  () => {
+    db.exec(`
+      ALTER TABLE jobs ADD COLUMN result TEXT;
+      ALTER TABLE jobs ADD COLUMN cost_usd REAL;
+      ALTER TABLE jobs ADD COLUMN num_turns INTEGER;
+      ALTER TABLE jobs ADD COLUMN session_id TEXT;
+      ALTER TABLE jobs ADD COLUMN meta TEXT;
+      CREATE INDEX idx_jobs_created ON jobs(created_at);
+    `);
+  },
 ];
 
 const current = db.pragma('user_version', { simple: true });

@@ -3,10 +3,20 @@
 
 import { el, clear, patch, del, toast, fail, debounce, formatDate } from './api.js';
 import { state, upsertLocal, scoreBandFor, select } from './state.js';
+import { startJob, onKinds } from './jobs.js';
 
 let host;
 let onChange = () => {};
 let current = null;
+let kinds = {};
+
+// Sobald die Job-Engine meldet, welche Auftragsarten scharf sind, werden die
+// Knoepfe hier von selbst aktiv. Phase 5 und 6 muessen dafuer nur ein Flag
+// in server/jobs/kinds.js umlegen.
+onKinds((next) => {
+  kinds = next;
+  if (current) render();
+});
 
 export function initDetail(node, { onVenueChange } = {}) {
   host = node;
@@ -198,16 +208,32 @@ function render() {
     ])
   );
 
-  // --- Aktionen, die spaeter Agenten starten ---
+  // --- Aktionen: starten echte Agenten-Läufe ---
+  const actions = [
+    { kind: 'analyse', icon: '🔍', fallback: 'Analyse durch Claude' },
+    { kind: 'demo', icon: '🔨', fallback: 'Demo bauen' },
+  ];
+  const pending = actions.filter(({ kind }) => kinds[kind] && !kinds[kind].available);
+
   inner.append(
     el('div', { class: 'block' }, [
       el('h3', {}, 'Aktionen'),
-      el('div', { class: 'links' }, [
-        el('button', { class: 'btn', disabled: true, title: 'Kommt in Phase 5' }, '🔍 Analyse durch Claude'),
-        el('button', { class: 'btn', disabled: true, title: 'Kommt in Phase 6' }, '🔨 Demo bauen'),
-      ]),
-      el('div', { class: 'hint', style: { marginTop: '6px' } },
-        'Die Job-Engine kommt in Phase 4–6. Bis dahin setzt du den Status von Hand.'),
+      el('div', { class: 'links' }, actions.map(({ kind, icon, fallback }) => {
+        const meta = kinds[kind];
+        const ready = Boolean(meta?.available);
+        return el('button', {
+          class: `btn ${ready ? 'primary' : ''}`,
+          disabled: !ready,
+          title: ready
+            ? `Modell: ${meta.model} · Tageslimit ${meta.dailyLimit}`
+            : `Kommt in Phase ${meta?.plannedIn ?? '?'}`,
+          onclick: ready ? () => startJob(kind, v.id) : null,
+        }, `${icon} ${meta?.label || fallback}`);
+      })),
+      pending.length
+        ? el('div', { class: 'hint', style: { marginTop: '6px' } },
+            `Noch nicht scharf: ${pending.map((a) => `${kinds[a.kind].label} (Phase ${kinds[a.kind].plannedIn})`).join(', ')}. Bis dahin setzt du den Status von Hand.`)
+        : null,
     ])
   );
 
