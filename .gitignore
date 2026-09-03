@@ -6,3 +6,6 @@ data/*.db-shm
 data/jobs/
 data/analysen/
 *.log
+
+# Impeccable Arbeitsdateien (Mocks, Reviews, Build-Status)
+.impeccable/
