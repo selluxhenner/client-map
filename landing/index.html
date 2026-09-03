@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client-Map</title>
+<meta name="description" content="Client-Map findet Gastro-Betriebe in deiner Region, bewertet ihre Website, baut eine Demo-Seite zum Vorzeigen und erinnert dich ans Nachfassen. Für Webdesigner in der Schweiz, Deutschland und Österreich.">
+<meta property="og:title" content="Client-Map — Die Liste ist der einfache Teil.">
+<meta property="og:description" content="Leads finden, Website bewerten, Demo bauen, nachfassen. Ein Werkzeug für Webdesigner, die an lokale Betriebe verkaufen.">
+<meta property="og:image" content="https://clientmap.serviweb.ch/screenshots/karte-detail.webp">
+<meta property="og:url" content="https://clientmap.serviweb.ch/">
+<meta name="theme-color" content="#10171A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%232FB08C' stroke-width='3' stroke-dasharray='4 3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23F0B043'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ------------------------------------------------------------------
+   Client-Map Landing
+   Bildwelt: Kartenblaetter auf einem dunklen Zeichentisch. Der Tisch
+   traegt ein feines Koordinatennetz, jedes Bild liegt auf einem
+   Papierblatt mit Blattnummer am Rand. Ein einziger fetter Moment:
+   die echte Karte im Kopf, mit dem Titel als Kartusche darueber.
+   ------------------------------------------------------------------ */
+
+:root {
+  /* Tisch (dunkel) */
+  --table:        #10171A;
+  --table-2:      #16201E;
+  --grid:         rgba(150, 175, 165, .075);
+  --line:         #253230;
+  --line-strong:  #3A4B47;
+  --ink:          #E8ECE7;
+  --ink-soft:     #98A59E;
+  --teal:         #2FB08C;
+  --teal-deep:    #0E6E58;
+  --amber:        #F0B043;
+  --violet:       #A78BFA;
+  --red:          #E9806A;
+  /* Blatt (hell) */
+  --paper:        #F4F2EB;
+  --paper-2:      #E9E6DC;
+  --paper-line:   #D3CFC1;
+  --ink-paper:    #151C19;
+  --ink-paper-soft:#5B655F;
+  --teal-paper:   #0E6E58;
+  --amber-paper:  #A9690A;
+  --amber-wash:   #F7E6C4;
+  --shadow:       0 1px 0 rgba(0,0,0,.35), 0 30px 60px -30px rgba(0,0,0,.9);
+
+  --display: "Bricolage Grotesque", "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --sans:    "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:    "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  --s-1: .8125rem;
+  --s0:  1.0625rem;
+  --s1:  1.25rem;
+  --s2:  1.625rem;
+  --s3:  clamp(1.9rem, 3.4vw, 2.6rem);
+  --s4:  clamp(2.6rem, 7vw, 5.4rem);
+
+  --rail: clamp(1.25rem, 4vw, 3rem);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --table:       #E4E7E0;
+    --table-2:     #DCE0D8;
+    --grid:        rgba(20, 40, 32, .07);
+    --line:        #C8CEC5;
+    --line-strong: #A5AEA7;
+    --ink:         #151C19;
+    --ink-soft:    #5B655F;
+    --teal:        #0E6E58;
+    --amber:       #A9690A;
+    --violet:      #6B4FA8;
+    --red:         #A93A26;
+    --paper:       #FBFAF6;
+    --paper-2:     #F0EEE6;
+    --shadow:      0 1px 0 rgba(20,28,24,.08), 0 24px 48px -28px rgba(20,28,24,.45);
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --table:       #E4E7E0;
+  --table-2:     #DCE0D8;
+  --grid:        rgba(20, 40, 32, .07);
+  --line:        #C8CEC5;
+  --line-strong: #A5AEA7;
+  --ink:         #151C19;
+  --ink-soft:    #5B655F;
+  --teal:        #0E6E58;
+  --amber:       #A9690A;
+  --violet:      #6B4FA8;
+  --red:         #A93A26;
+  --paper:       #FBFAF6;
+  --paper-2:     #F0EEE6;
+  --shadow:      0 1px 0 rgba(20,28,24,.08), 0 24px 48px -28px rgba(20,28,24,.45);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background-color: var(--table);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 88px 88px;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--s0);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--display); font-weight: 800; line-height: 1.02; letter-spacing: -.028em; text-wrap: balance; margin: 0; font-variation-settings: "opsz" 96; }
+p { margin: 0; }
+a { color: inherit; }
+img { max-width: 100%; display: block; }
+
+.wrap { width: min(1180px, 100% - 2 * var(--rail)); margin-inline: auto; }
+
+.mono { font-family: var(--mono); font-size: var(--s-1); letter-spacing: .06em; }
+.eyebrow {
+  font-family: var(--mono); font-size: .75rem; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--teal);
+}
+
+/* ---------- Kopfleiste ---------- */
+
+.top {
+  position: sticky; top: 0; z-index: 30;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--table) 86%, transparent);
+  backdrop-filter: blur(10px);
+}
+.top .wrap { display: flex; align-items: center; gap: 1rem; height: 60px; }
+.brand { font-family: var(--display); font-weight: 800; font-size: 1.25rem; letter-spacing: -.03em; text-decoration: none; display: flex; align-items: center; gap: .55rem; }
+.brand svg { flex: none; }
+.top-spacer { flex: 1; }
+.top-nav { display: none; gap: 1.5rem; font-size: var(--s-1); color: var(--ink-soft); }
+.top-nav a { text-decoration: none; }
+.top-nav a:hover { color: var(--ink); }
+@media (min-width: 820px) { .top-nav { display: flex; } }
+
+.lang { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; overflow: hidden; font-family: var(--mono); font-size: .75rem; }
+.lang button { appearance: none; border: 0; background: transparent; color: var(--ink-soft); padding: .35rem .7rem; cursor: pointer; font: inherit; letter-spacing: .08em; }
+.lang button[aria-pressed="true"] { background: var(--ink); color: var(--table); }
+.lang button:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; }
+
+/* ---------- Knoepfe ---------- */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+  padding: .85rem 1.35rem; border-radius: 4px; border: 1px solid transparent;
+  font-family: var(--sans); font-size: var(--s0); font-weight: 600; line-height: 1.2;
+  text-decoration: none; cursor: pointer; white-space: nowrap;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.btn-primary { background: var(--teal-deep); color: #FFFFFF; }
+.btn-primary:hover { background: color-mix(in srgb, var(--teal-deep) 88%, black); }
+.btn-paper { background: transparent; color: var(--ink-paper); border-color: var(--ink-paper); }
+.btn-paper:hover { background: rgba(0,0,0,.05); }
+.btn-table { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+.btn-table:hover { border-color: var(--ink); }
+.btn-amber { background: var(--ink-paper); color: var(--paper); }
+
+.cta-row { display: flex; flex-wrap: wrap; gap: .75rem; }
+
+/* ---------- Hero: die echte Karte, Titel als Kartusche ---------- */
+
+.hero { position: relative; isolation: isolate; overflow: hidden; border-bottom: 1px solid var(--line); }
+.hero-map {
+  position: absolute; inset: 0; z-index: -2;
+  background: #DDE5D6 url("screenshots/hero.webp") center 45% / cover no-repeat;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-map { animation: drift 28s ease-in-out infinite alternate; transform-origin: 60% 45%; }
+  @keyframes drift { from { transform: scale(1); } to { transform: scale(1.07); } }
+}
+.hero-shade {
+  position: absolute; inset: 0; z-index: -1;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--table) 55%, transparent) 0%, transparent 28%, transparent 55%, var(--table) 100%),
+    linear-gradient(90deg, color-mix(in srgb, var(--table) 78%, transparent) 0%, color-mix(in srgb, var(--table) 30%, transparent) 45%, transparent 75%);
+}
+.hero .wrap { min-height: min(92vh, 900px); display: flex; flex-direction: column; justify-content: flex-end; padding: clamp(7rem, 16vh, 10rem) 0 clamp(2.5rem, 6vw, 4.5rem); }
+
+.cartouche {
+  background: var(--paper); color: var(--ink-paper);
+  width: min(720px, 100%);
+  padding: clamp(1.5rem, 3.5vw, 2.5rem);
+  border-radius: 4px; box-shadow: var(--shadow);
+  position: relative;
+}
+.cartouche::before {
+  content: ""; position: absolute; inset: 8px; border: 1px solid var(--paper-line); border-radius: 2px; pointer-events: none;
+}
+.cartouche .eyebrow { color: var(--teal-paper); }
+.cartouche h1 { font-size: var(--s4); margin-top: .8rem; }
+.cartouche h1 em { font-style: normal; color: var(--teal-paper); }
+.cartouche .lead { margin-top: 1.1rem; font-size: var(--s1); color: var(--ink-paper-soft); max-width: 30em; line-height: 1.5; }
+.cartouche .cta-row { margin-top: 1.6rem; }
+.cartouche .note { margin-top: .9rem; font-size: var(--s-1); color: var(--ink-paper-soft); }
+.cart-meta {
+  display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; margin-top: 1.5rem; padding-top: 1rem;
+  border-top: 1px solid var(--paper-line);
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; color: var(--ink-paper-soft); text-transform: uppercase;
+}
+
+.hero-legend {
+  margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: .75rem 2rem; align-items: center;
+  color: var(--ink); font-size: var(--s-1);
+  text-shadow: 0 1px 12px var(--table);
+}
+.hero-legend b { font-weight: 600; }
+.hero-legend svg { flex: none; vertical-align: middle; margin-right: .5rem; }
+
+/* ---------- Blaetter (Sektionen) ---------- */
+
+.sheet { padding: clamp(4rem, 9vw, 7.5rem) 0; }
+.sheet + .sheet { border-top: 1px solid var(--line); }
+.sheet-head { display: grid; gap: 1rem; margin-bottom: clamp(2rem, 5vw, 3.5rem); align-items: end; }
+@media (min-width: 900px) { .sheet-head { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 3rem; } }
+.sheet-head h2 { font-size: var(--s3); margin-top: .8rem; }
+.sheet-head p { color: var(--ink-soft); max-width: 40em; }
+
+.index { font-family: var(--mono); font-size: .72rem; letter-spacing: .14em; color: var(--ink-soft); text-transform: uppercase; }
+.index b { color: var(--ink); font-weight: 500; }
+
+/* Papierblatt mit Bild */
+.plate {
+  background: var(--paper); border-radius: 4px; box-shadow: var(--shadow);
+  padding: .6rem; position: relative;
+}
+.plate-img { border-radius: 2px; overflow: hidden; border: 1px solid var(--paper-line); background: var(--paper-2); }
+.plate-img img { width: 100%; height: auto; }
+.plate-cap {
+  display: flex; justify-content: space-between; gap: 1rem; align-items: baseline;
+  padding: .7rem .4rem .3rem; color: var(--ink-paper-soft);
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+}
+.plate-cap b { color: var(--ink-paper); font-weight: 500; }
+
+/* Problem: vier Zeilen auf einem Blatt */
+.pains { background: var(--paper); color: var(--ink-paper); border-radius: 4px; box-shadow: var(--shadow); overflow: hidden; }
+.pain { display: grid; grid-template-columns: 4rem 1fr; gap: 1rem; padding: 1.35rem 1.5rem; border-bottom: 1px solid var(--paper-line); align-items: start; }
+.pain:last-child { border-bottom: 0; }
+.pain-n { font-family: var(--mono); font-size: var(--s-1); color: var(--teal-paper); padding-top: .25rem; }
+.pain p { font-family: var(--display); font-weight: 500; font-size: var(--s1); line-height: 1.35; letter-spacing: -.01em; font-variation-settings: "opsz" 24; }
+.pain small { display: block; margin-top: .4rem; font-family: var(--sans); font-size: var(--s-1); color: var(--ink-paper-soft); font-weight: 400; letter-spacing: 0; }
+
+/* Ablauf: Text neben Blatt, abwechselnd */
+.rows { display: grid; gap: clamp(3rem, 7vw, 5.5rem); }
+.row { display: grid; gap: 1.75rem; align-items: center; }
+@media (min-width: 900px) {
+  .row { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 3.5rem; }
+  .row.flip .row-text { order: 2; }
+}
+.row-text { display: flex; flex-direction: column; gap: .9rem; max-width: 30em; }
+.row-text h3 { font-size: var(--s2); }
+.row-text h3 span { color: var(--step-color, var(--teal)); }
+.row-text p { color: var(--ink-soft); }
+.row-text .step-n { font-family: var(--mono); font-size: .75rem; letter-spacing: .16em; color: var(--step-color, var(--teal)); text-transform: uppercase; }
+.row-text ul { margin: .2rem 0 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: var(--s-1); display: grid; gap: .35rem; }
+.row-text ul li::marker { color: var(--step-color, var(--teal)); }
+
+/* Detail: zwei Panels mit Annotationen */
+.anatomy { display: grid; gap: 2rem; align-items: start; }
+@media (min-width: 900px) { .anatomy { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 3.5rem; } }
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.callouts { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.callout { display: grid; grid-template-columns: 2.25rem 1fr; gap: .9rem; padding: 1.1rem 0; border-bottom: 1px solid var(--line); }
+.callout-n {
+  width: 1.75rem; height: 1.75rem; border-radius: 999px; display: grid; place-items: center;
+  font-family: var(--mono); font-size: .75rem; font-weight: 500; color: var(--table); background: var(--teal);
+}
+.callout b { display: block; font-weight: 600; margin-bottom: .2rem; }
+.callout p { color: var(--ink-soft); font-size: var(--s-1); }
+
+/* Preise auf Blaettern */
+.tiers { display: grid; gap: 1rem; }
+@media (min-width: 640px) { .tiers { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1040px) { .tiers { grid-template-columns: repeat(4, 1fr); } }
+.tier {
+  background: var(--paper); color: var(--ink-paper); border-radius: 4px; box-shadow: var(--shadow);
+  padding: 1.5rem 1.35rem; display: flex; flex-direction: column; gap: .9rem; position: relative;
+}
+.tier.marked { outline: 2px solid var(--teal-paper); outline-offset: -2px; }
+.tier-name { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-paper-soft); }
+.tier.marked .tier-name { color: var(--teal-paper); }
+.tier-price { font-family: var(--display); font-weight: 800; font-size: var(--s2); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.tier-price small { font-family: var(--sans); font-size: var(--s-1); font-weight: 500; color: var(--ink-paper-soft); letter-spacing: 0; margin-left: .2rem; }
+.tier ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .45rem; font-size: var(--s-1); color: var(--ink-paper-soft); }
+.tier ul li::marker { color: var(--teal-paper); }
+
+.early {
+  margin-top: 1.5rem; background: var(--amber-wash); color: var(--ink-paper);
+  border-radius: 4px; box-shadow: var(--shadow); padding: clamp(1.5rem, 3vw, 2.25rem);
+  display: grid; gap: 1.25rem; align-items: center;
+}
+@media (min-width: 820px) { .early { grid-template-columns: 1fr auto; gap: 2.5rem; } }
+.early .eyebrow { color: var(--amber-paper); }
+.early h3 { font-size: var(--s2); margin-top: .5rem; }
+.early p { margin-top: .6rem; color: var(--ink-paper-soft); max-width: 44em; }
+
+/* FAQ */
+.faq { max-width: 46rem; border-top: 1px solid var(--line); }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary {
+  cursor: pointer; list-style: none; padding: 1.1rem 0;
+  font-family: var(--display); font-weight: 500; font-size: var(--s1); letter-spacing: -.01em; font-variation-settings: "opsz" 24;
+  display: flex; justify-content: space-between; gap: 1rem; align-items: center;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font-family: var(--mono); color: var(--ink-soft); font-size: 1.4rem; line-height: 1; }
+.faq details[open] summary::after { content: "–"; }
+.faq summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.faq-body { padding: 0 0 1.25rem; color: var(--ink-soft); max-width: 52em; }
+
+/* Schluss */
+.close { text-align: center; display: grid; justify-items: center; gap: 1.25rem; }
+.close h2 { font-size: var(--s3); max-width: 16em; }
+.close p { color: var(--ink-soft); max-width: 38em; }
+
+footer { border-top: 1px solid var(--line); padding: 2.5rem 0 3.5rem; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 1rem 2rem; justify-content: space-between; align-items: baseline; }
+footer p { color: var(--ink-soft); font-size: var(--s-1); max-width: 44em; }
+footer .mono { color: var(--ink-soft); }
+footer a { color: var(--ink-soft); }
+
+/* Einblenden beim Scrollen */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+}
+
+.toast {
+  position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%);
+  background: var(--paper); color: var(--ink-paper); padding: .8rem 1.1rem; border-radius: 4px;
+  font-size: var(--s-1); box-shadow: var(--shadow); z-index: 50; max-width: min(34rem, calc(100% - 2rem));
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Client-Map">
+      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12" fill="none" stroke="var(--teal)" stroke-width="3" stroke-dasharray="4 3"/><circle cx="16" cy="16" r="5" fill="var(--amber)"/></svg>
+      Client-Map
+    </a>
+    <nav class="top-nav" aria-label="Seite">
+      <a href="#ablauf" data-i18n="navFlow">Ablauf</a>
+      <a href="#betrieb" data-i18n="navDetail">Der Betrieb</a>
+      <a href="#preise" data-i18n="navPricing">Preise</a>
+      <a href="#fragen" data-i18n="navFaq">Fragen</a>
+    </nav>
+    <div class="top-spacer"></div>
+    <div class="lang" role="group" aria-label="Sprache / Language">
+      <button type="button" data-lang="de" aria-pressed="true">DE</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="hero-map" role="img" aria-label="Kartenausschnitt der Region Wil mit gruppierten, bewerteten Betrieben"></div>
+    <div class="hero-shade"></div>
+    <div class="wrap">
+      <div class="cartouche">
+        <p class="eyebrow" data-i18n="heroEyebrow">Für Webdesigner in CH · DE · AT</p>
+        <h1><span data-i18n="heroTitleA">Die Liste ist</span> <em data-i18n="heroTitleB">der einfache Teil.</em></h1>
+        <p class="lead" data-i18n="heroSub">Client-Map findet die Gastro-Betriebe in deiner Region, prüft ihre Website, baut eine Demo-Seite zum Vorzeigen — und erinnert dich daran, nachzufassen.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" data-cta="waitlist" href="#" data-i18n="ctaWaitlist">Auf die Warteliste</a>
+          <a class="btn btn-paper" data-cta="early" href="#" data-i18n="ctaEarly">Früher Zugang · 19 €/Monat</a>
+        </div>
+        <p class="note" data-i18n="heroNote">Läuft heute für eine Person. Diese Seite entscheidet, ob es ein Produkt wird.</p>
+        <div class="cart-meta">
+          <span data-i18n="metaSheet">Blatt 1 · Region Wil SG</span>
+          <span>47.4661 N · 9.0450 E</span>
+          <span data-i18n="metaCount">4 335 Betriebe erfasst</span>
+        </div>
+      </div>
+      <div class="hero-legend">
+        <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="8.5" fill="none" stroke="var(--teal)" stroke-width="2.5"/><circle cx="11" cy="11" r="4" fill="var(--teal)"/></svg><b data-i18n="legendColorB">Farbe</b> <span data-i18n="legendColor">= wie weit du mit dem Laden bist</span></span>
+        <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="8.5" fill="none" stroke="var(--amber)" stroke-width="2.5" stroke-dasharray="3 3"/><circle cx="11" cy="11" r="4" fill="var(--ink-soft)"/></svg><b data-i18n="legendRingB">Ring</b> <span data-i18n="legendRing">= wie gut der Lead ist · gestrichelt = ungeprüft</span></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="problem">
+    <div class="wrap">
+      <div class="sheet-head reveal">
+        <div>
+          <p class="index"><b data-i18n="idx2">Blatt 2</b> · <span data-i18n="idx2b">Das Problem</span></p>
+          <h2 data-i18n="painTitle">Eine Liste von Betrieben ohne Website kostet zwölf Dollar.</h2>
+        </div>
+        <p data-i18n="painLead">Genau das verkaufen alle Werkzeuge in diesem Markt. Sie lösen nur keinen der vier Punkte, an denen Akquise tatsächlich scheitert.</p>
+      </div>
+      <div class="pains reveal">
+        <div class="pain"><div class="pain-n">01</div><p><span data-i18n="pain1">Du exportierst 200 Betriebe. Zwei Wochen später weisst du nicht mehr, wen du schon angeschrieben hast.</span><small data-i18n="pain1s">Kein Status, keine Historie, kein Datum. Die Tabelle weiss es auch nicht.</small></p></div>
+        <div class="pain"><div class="pain-n">02</div><p><span data-i18n="pain2">„Kein Website-Eintrag" in den Daten heisst nicht „keine Website".</span><small data-i18n="pain2s">Ein Teil deiner Liste ist längst versorgt. Du merkst es in der Antwort — oder gar nicht.</small></p></div>
+        <div class="pain"><div class="pain-n">03</div><p><span data-i18n="pain3">Die Nachricht ist geschrieben. Der Wirt versteht trotzdem nicht, was du anders machen würdest.</span><small data-i18n="pain3s">Er hat eine Website. Sie ist alt. Für ihn funktioniert sie. Worte ändern das nicht, eine Demo schon.</small></p></div>
+        <div class="pain"><div class="pain-n">04</div><p><span data-i18n="pain4">Nachfassen passiert nicht, weil nirgends steht, wann.</span><small data-i18n="pain4s">Die meisten Aufträge kommen beim zweiten oder dritten Kontakt. Der findet nur statt, wenn er irgendwo eingetragen ist.</small></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="ablauf">
+    <div class="wrap">
+      <div class="sheet-head reveal">
+        <div>
+          <p class="index"><b data-i18n="idx3">Blatt 3</b> · <span data-i18n="idx3b">Der Ablauf</span></p>
+          <h2 data-i18n="flowTitle">Vom Kartenausschnitt bis zum unterschriebenen Auftrag.</h2>
+        </div>
+        <p data-i18n="flowLead">Keine Mockups. Das sind Bildschirmfotos des laufenden Werkzeugs — Namen und Nummern der Betriebe ersetzt, alles andere echt.</p>
+      </div>
+
+      <div class="rows">
+        <div class="row reveal">
+          <div class="row-text" style="--step-color: var(--ink-soft)">
+            <span class="step-n" data-i18n="step1N">Schritt 1 · Finden</span>
+            <h3 data-i18n="step1T">Bereich aufziehen. Jeden Betrieb darin bekommen.</h3>
+            <p data-i18n="step1B">Client-Map holt alle Gastro-Betriebe aus dem Ausschnitt — Restaurants, Cafés, Bars, Imbisse — aus OpenStreetMap, auf Wunsch angereichert über Google Places. Grosse Gebiete werden in Kacheln zerlegt, damit nichts verloren geht.</p>
+            <ul>
+              <li data-i18n="step1a">Gruppierte Pins zeigen, wo sich die Dichte lohnt</li>
+              <li data-i18n="step1b">Gespeicherte Filter: „Ohne Website", „Nur Instagram", „Heiss &amp; unberührt"</li>
+              <li data-i18n="step1c">Ein Rescan überschreibt nie deine Arbeit</li>
+            </ul>
+          </div>
+          <figure class="plate">
+            <div class="plate-img"><img src="screenshots/karte-region.webp" width="2000" height="1250" alt="Kartenansicht: Region Wil mit Pin-Gruppen und Filterleiste" loading="lazy"></div>
+            <figcaption class="plate-cap"><b data-i18n="cap1">Karte · Region Wil</b><span data-i18n="cap1b">4 335 Betriebe · 197 im Ausschnitt</span></figcaption>
+          </figure>
+        </div>
+
+        <div class="row flip reveal">
+          <div class="row-text" style="--step-color: var(--amber)">
+            <span class="step-n" data-i18n="step2N">Schritt 2 · Bewerten</span>
+            <h3 data-i18n="step2T">Der Score sagt, wer eine Website braucht — und wer nur so aussieht.</h3>
+            <p data-i18n="step2B">Ein Agent sieht sich Website und Instagram des Betriebs an und vergibt Punkte: keine Website +40, kaputt oder nicht mobil +30, veraltet +20, Instagram aktiv aber ohne Seite +25. Ungeprüft bleibt sichtbar ungeprüft — ein gestrichelter Ring statt Ratespiel.</p>
+            <ul>
+              <li data-i18n="step2a">Web-Check gratis, Schnell-Check in 30 Sekunden, Tiefen-Analyse als Markdown</li>
+              <li data-i18n="step2b">Die Begründung steht neben der Zahl, nicht dahinter versteckt</li>
+              <li data-i18n="step2c">Ganze Ausschnitte auf einmal bewerten</li>
+            </ul>
+          </div>
+          <figure class="plate">
+            <div class="plate-img"><img src="screenshots/liste-detail.webp" width="2000" height="1250" alt="Listenansicht mit Trichter, sortiert nach Score, daneben das Detail eines Betriebs mit 45 Punkten" loading="lazy"></div>
+            <figcaption class="plate-cap"><b data-i18n="cap2">Liste · nach Score</b><span data-i18n="cap2b">Pub zum Engel · 45 Punkte · Website kaputt</span></figcaption>
+          </figure>
+        </div>
+
+        <div class="row reveal">
+          <div class="row-text" style="--step-color: var(--violet)">
+            <span class="step-n" data-i18n="step3N">Schritt 3 · Überzeugen</span>
+            <h3 data-i18n="step3T">Eine Demo-Seite für genau diesen Laden. Das ist das Argument.</h3>
+            <p data-i18n="step3B">Ein Knopf im Betrieb startet den Bau einer echten, vorzeigbaren Website aus der Analyse — Speisekarte, Öffnungszeiten, Bilder, Ton des Hauses. Dazu ein Kontakt-Entwurf für WhatsApp, Instagram oder Mail, der den Wirt beim Namen nennt und auf seine Seite eingeht.</p>
+            <ul>
+              <li data-i18n="step3a">Die App verschickt nie etwas. Du liest, änderst, schickst selbst</li>
+              <li data-i18n="step3b">Demo-Ordner werden Betrieben vorgeschlagen, nie automatisch zugeordnet</li>
+              <li data-i18n="step3c">Der Bau läuft in seinem eigenen Ordner, ohne Zugriff auf Kundenprojekte</li>
+            </ul>
+          </div>
+          <figure class="plate">
+            <div class="plate-img"><img src="screenshots/karte-detail.webp" width="2000" height="1250" alt="Altstadt Wil auf Strassenebene mit einzelnen Pins; rechts ein geöffneter Betrieb im Status Demo gebaut" loading="lazy"></div>
+            <figcaption class="plate-cap"><b data-i18n="cap3">Karte · Altstadt</b><span data-i18n="cap3b">Café Bahnhof · Demo gebaut</span></figcaption>
+          </figure>
+        </div>
+
+        <div class="row flip reveal">
+          <div class="row-text" style="--step-color: var(--teal)">
+            <span class="step-n" data-i18n="step4N">Schritt 4 · Nachfassen</span>
+            <h3 data-i18n="step4T">Der Trichter zeigt, wo es klemmt.</h3>
+            <p data-i18n="step4B">Jeder Kontakt wird eingetragen: Kanal, Ergebnis, was gesagt wurde. Der Status zieht automatisch mit — aber nur vorwärts, ein Kunde wird nie wieder zum Kontaktierten. Die Wiedervorlage steht am Betrieb, mit einem Klick auf +7, +14, +30 Tage.</p>
+            <ul>
+              <li data-i18n="step4a">Trichter zählt kumulativ: so viele haben diese Stufe mindestens erreicht</li>
+              <li data-i18n="step4b">„Wiedervorlage fällig" als gespeicherter Filter</li>
+              <li data-i18n="step4c">CSV-Export enthält exakt das, was auf dem Bildschirm steht</li>
+            </ul>
+          </div>
+          <figure class="plate">
+            <div class="plate-img"><img src="screenshots/liste.webp" width="2000" height="1250" alt="Listenansicht mit dem Trichter: 36 neu, 4 recherchiert, 4 interessiert, 3 Demo gebaut, 2 kontaktiert, 2 im Gespräch, 2 Kunde" loading="lazy"></div>
+            <figcaption class="plate-cap"><b data-i18n="cap4">Liste · Trichter</b><span data-i18n="cap4b">Wil SG · 38 Betriebe · 2 Kunden</span></figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="betrieb">
+    <div class="wrap">
+      <div class="sheet-head reveal">
+        <div>
+          <p class="index"><b data-i18n="idx4">Blatt 4</b> · <span data-i18n="idx4b">Der Betrieb</span></p>
+          <h2 data-i18n="anatTitle">Alles zu einem Laden auf einer Seite.</h2>
+        </div>
+        <p data-i18n="anatLead">Das Detail-Panel ist der Ort, an dem du arbeitest. Was darin steht, ist bewusst getrennt: Buchführung oben, Fakten unten, Aktionen ganz unten.</p>
+      </div>
+      <div class="anatomy">
+        <div class="panels reveal">
+          <figure class="plate">
+            <div class="plate-img"><img src="screenshots/detail-kopf.webp" width="760" height="1692" alt="Kopf des Detail-Panels: Score 45 mit Begründung, Warnhinweis ungeprüft, Pipeline-Status, Wiedervorlage, Notizen, Kontakt-Historie" loading="lazy"></div>
+            <figcaption class="plate-cap"><b data-i18n="cap5">Panel · oben</b></figcaption>
+          </figure>
+          <figure class="plate">
+            <div class="plate-img"><img src="screenshots/detail-aktionen.webp" width="760" height="1692" alt="Unterer Teil des Detail-Panels: Kontaktfelder, Fakten aus OpenStreetMap, Nachschauen-Links und die Aktionen Web-Check, Schnell-Check, Analyse, Demo bauen, Kontakt-Entwurf" loading="lazy"></div>
+            <figcaption class="plate-cap"><b data-i18n="cap6">Panel · unten</b></figcaption>
+          </figure>
+        </div>
+        <div class="callouts reveal">
+          <div class="callout"><span class="callout-n">1</span><div><b data-i18n="co1">Score mit Begründung</b><p data-i18n="co1b">45 Punkte: Website kaputt +30, Instagram inaktiv +15. Jeder Punkt hat einen Grund, und der steht daneben.</p></div></div>
+          <div class="callout"><span class="callout-n">2</span><div><b data-i18n="co2">Ungeprüft heisst ungeprüft</b><p data-i18n="co2b">Der gelbe Hinweis bleibt, bis eine Analyse die Website tatsächlich gesehen hat. Ohne ihn schreibst du Läden an, die längst eine gute Seite haben.</p></div></div>
+          <div class="callout"><span class="callout-n">3</span><div><b data-i18n="co3">Pipeline und Wiedervorlage</b><p data-i18n="co3b">Status, letzter Kontakt, nächster Termin. Eine Frage pro Laden: wann kümmere ich mich wieder darum?</p></div></div>
+          <div class="callout"><span class="callout-n">4</span><div><b data-i18n="co4">Kontakt-Historie</b><p data-i18n="co4b">Kanal, Ergebnis, Notiz. „Termin vereinbart" stellt auf Im Gespräch, „Auftrag" auf Kunde — automatisch, nur vorwärts.</p></div></div>
+          <div class="callout"><span class="callout-n">5</span><div><b data-i18n="co5">Fakten bleiben Fakten</b><p data-i18n="co5b">Öffnungszeiten, Quelle, Analyse, Demo. Was der Agent korrigiert, korrigiert er hier — nie in deinen Notizen oder deinem Status.</p></div></div>
+          <div class="callout"><span class="callout-n">6</span><div><b data-i18n="co6">Fünf Aktionen</b><p data-i18n="co6b">Web-Check gratis, Schnell-Check, Analyse, Demo bauen, Kontakt-Entwurf. Recherche auf dem günstigen Modell, nur der Demo-Bau auf dem grossen.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="preise">
+    <div class="wrap">
+      <div class="sheet-head reveal">
+        <div>
+          <p class="index"><b data-i18n="idx5">Blatt 5</b> · <span data-i18n="idx5b">Geplante Preise</span></p>
+          <h2 data-i18n="priceTitle">Der Demo-Generator ist die Grenze zwischen Solo und Pro.</h2>
+        </div>
+        <p data-i18n="priceLead">In Euro, monatlich kündbar. Nichts davon ist heute buchbar — deshalb der frühe Zugang darunter.</p>
+      </div>
+      <div class="tiers reveal">
+        <div class="tier">
+          <div class="tier-name" data-i18n="tier0N">Gratis</div>
+          <div class="tier-price">0 €<small data-i18n="perMonth">/ Monat</small></div>
+          <ul><li data-i18n="tier0a">25 Leads pro Monat</li><li data-i18n="tier0b">Karte und Pipeline</li><li data-i18n="tier0c">CSV-Export</li></ul>
+        </div>
+        <div class="tier">
+          <div class="tier-name" data-i18n="tier1N">Solo</div>
+          <div class="tier-price">29 €<small data-i18n="perMonth">/ Monat</small></div>
+          <ul><li data-i18n="tier1a">Unbegrenzte Leads</li><li data-i18n="tier1b">Website- und Instagram-Bewertung</li><li data-i18n="tier1c">Wiedervorlage und Historie</li></ul>
+        </div>
+        <div class="tier marked">
+          <div class="tier-name" data-i18n="tier2N">Pro</div>
+          <div class="tier-price">79 €<small data-i18n="perMonth">/ Monat</small></div>
+          <ul><li data-i18n="tier2a">Alles aus Solo</li><li data-i18n="tier2b">Demo-Generator</li><li data-i18n="tier2c">Kontakt-Entwürfe</li></ul>
+        </div>
+        <div class="tier">
+          <div class="tier-name" data-i18n="tier3N">Agentur</div>
+          <div class="tier-price">199 €<small data-i18n="perMonth">/ Monat</small></div>
+          <ul><li data-i18n="tier3a">Mehrere Nutzer</li><li data-i18n="tier3b">Geteilte Pipeline</li><li data-i18n="tier3c">Gebiete pro Person</li></ul>
+        </div>
+      </div>
+      <div class="early reveal">
+        <div>
+          <p class="eyebrow" data-i18n="earlyEyebrow">Früher Zugang</p>
+          <h3 data-i18n="earlyT">19 € im Monat. Für immer.</h3>
+          <p data-i18n="earlyB">Für die ersten, die vor dem Start bezahlen. Der Preis bleibt, solange du Kunde bleibst — auch wenn Pro später 79 € kostet. Kommt kein Start zustande, bekommst du alles zurück.</p>
+        </div>
+        <a class="btn btn-amber" data-cta="early" href="#" data-i18n="earlyCta">Platz sichern</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="fragen">
+    <div class="wrap">
+      <div class="sheet-head reveal">
+        <div>
+          <p class="index"><b data-i18n="idx6">Blatt 6</b> · <span data-i18n="idx6b">Fragen</span></p>
+          <h2 data-i18n="faqTitle">Was du vermutlich wissen willst.</h2>
+        </div>
+      </div>
+      <div class="faq reveal">
+        <details><summary data-i18n="faq1Q">Woher kommen die Daten?</summary><div class="faq-body" data-i18n="faq1A">Aus OpenStreetMap, optional angereichert über Google Places. Bewertet wird die Website des Betriebs selbst — keine Bewertungsportale, keine Profile Dritter.</div></details>
+        <details><summary data-i18n="faq2Q">Gibt es das schon, oder ist das eine Idee?</summary><div class="faq-body" data-i18n="faq2A">Es läuft. Ich benutze es täglich für meine eigene Akquise im Raum Wil; die Bilder oben sind von heute. Was fehlt, ist alles, was mehr als einen Nutzer braucht: Konten, Abrechnung, geteilte Daten. Das baue ich erst, wenn klar ist, dass es ausser mir jemand will.</div></details>
+        <details><summary data-i18n="faq3Q">Sind die Betriebe auf den Bildern echt?</summary><div class="faq-body" data-i18n="faq3A">Die Karte, die Zahlen und die Bewertungen sind echt. Namen, Telefonnummern und Adressen der Betriebe sind ersetzt — niemand soll auf dieser Seite lesen, dass seine Website kaputt ist.</div></details>
+        <details><summary data-i18n="faq4Q">Warum nur Gastro?</summary><div class="faq-body" data-i18n="faq4A">Weil ich dort verkaufe und die Kategorien kenne. Coiffeur, Handwerk und Fitness sind derselbe Ablauf mit anderen Filtern — sag mir, welche Branche du brauchst.</div></details>
+        <details><summary data-i18n="faq5Q">Wann kann ich es benutzen?</summary><div class="faq-body" data-i18n="faq5A">Wenn genug Leute sagen, dass sie es brauchen. Ich baue kein Mehrbenutzer-Produkt auf Verdacht. Trag dich ein, und du hörst als Erstes davon.</div></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet">
+    <div class="wrap close reveal">
+      <p class="index"><b data-i18n="idx7">Blatt 7</b></p>
+      <h2 data-i18n="closeT">Sag mir, ob ich das bauen soll.</h2>
+      <p data-i18n="closeB">Die Warteliste kostet nichts und verpflichtet zu nichts. Wenn du es wirklich willst, sichere dir den Preis — das ist die Antwort, auf die ich höre.</p>
+      <div class="cta-row" style="justify-content:center">
+        <a class="btn btn-primary" data-cta="waitlist" href="#" data-i18n="ctaWaitlist">Auf die Warteliste</a>
+        <a class="btn btn-table" data-cta="early" href="#" data-i18n="ctaEarly">Früher Zugang · 19 €/Monat</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p data-i18n="footer">Gebaut in Wil SG von Kevin, der damit selbst Restaurants anschreibt. Client-Map ist heute ein Werkzeug für eine Person. Diese Seite prüft, ob daraus ein Produkt wird.</p>
+    <p class="mono"><a href="https://serviweb.ch">Serviweb</a> · 2026</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------------------
+     HIER EINTRAGEN.
+     WAITLIST  Tally-, Fillout- oder Google-Formular  (CTA A, Interesse)
+     EARLY     Stripe Payment Link, 19 EUR/Monat       (CTA B, Absicht)
+     UMAMI_ID  Website-ID aus umami.serviweb.ch        (Besuche, Klicks)
+     Solange ein Link "#" ist, meldet ein Klick das statt ins Leere zu fuehren.
+     ------------------------------------------------------------------ */
+  var LINKS = { waitlist: "#", early: "#" };
+  var UMAMI_ID = "";
+
+  if (UMAMI_ID) {
+    var s = document.createElement("script");
+    s.defer = true;
+    s.src = "https://umami.serviweb.ch/script.js";
+    s.setAttribute("data-website-id", UMAMI_ID);
+    document.head.appendChild(s);
+  }
+
+  /* UTM des Besuchers ans Ziel weiterreichen: der Kanal steht dann im Formular. */
+  function withSource(url) {
+    if (!url || url.charAt(0) === "#") return url;
+    var here = new URLSearchParams(window.location.search);
+    var out;
+    try { out = new URL(url); } catch (e) { return url; }
+    ["utm_source", "utm_medium", "utm_campaign", "utm_content"].forEach(function (key) {
+      var value = here.get(key);
+      if (value) out.searchParams.set(key, value);
+    });
+    if (!out.searchParams.has("utm_source") && document.referrer) {
+      try { out.searchParams.set("utm_source", new URL(document.referrer).hostname); } catch (e) {}
+    }
+    return out.toString();
+  }
+
+  var toastTimer;
+  function say(message) {
+    var old = document.querySelector(".toast");
+    if (old) old.remove();
+    var node = document.createElement("div");
+    node.className = "toast";
+    node.setAttribute("role", "status");
+    node.textContent = message;
+    document.body.appendChild(node);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { node.remove(); }, 5000);
+  }
+
+  document.querySelectorAll("[data-cta]").forEach(function (link) {
+    var target = LINKS[link.dataset.cta];
+    if (target && target.charAt(0) !== "#") {
+      link.href = withSource(target);
+      link.rel = "noopener";
+      link.addEventListener("click", function () {
+        if (window.umami) window.umami.track("cta-" + link.dataset.cta);
+      });
+      return;
+    }
+    link.addEventListener("click", function (event) {
+      event.preventDefault();
+      say(TEXT[lang].linkMissing);
+    });
+  });
+
+  /* Einblenden beim Scrollen */
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { entry.target.classList.add("in"); io.unobserve(entry.target); }
+      });
+    }, { rootMargin: "0px 0px -8% 0px" });
+    document.querySelectorAll(".reveal").forEach(function (node) { io.observe(node); });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function (node) { node.classList.add("in"); });
+  }
+
+  /* ------------------------------------------------------------------
+     Sprache. Deutsch steht im Markup, Englisch hier.
+     ------------------------------------------------------------------ */
+  var TEXT = {
+    de: { linkMissing: "Ziel noch nicht eingetragen — Formular- und Stripe-Link stehen oben im Script-Block." },
+    en: {
+      linkMissing: "Link not set yet — add the form and Stripe URLs at the top of the script block.",
+      navFlow: "How it runs", navDetail: "The business", navPricing: "Pricing", navFaq: "Questions",
+      heroEyebrow: "For web freelancers in DACH",
+      heroTitleA: "The list is", heroTitleB: "the easy part.",
+      heroSub: "Client-Map finds the restaurants and cafés in your area, checks their website, builds a demo site to show them — and reminds you to follow up.",
+      ctaWaitlist: "Join the waitlist", ctaEarly: "Early access · 19 €/month",
+      heroNote: "Runs for one person today. This page decides whether it becomes a product.",
+      metaSheet: "Sheet 1 · Wil SG region", metaCount: "4,335 businesses on file",
+      legendColorB: "Colour", legendColor: "= how far you have got with the place",
+      legendRingB: "Ring", legendRing: "= how good the lead is · dashed = unverified",
+      idx2: "Sheet 2", idx2b: "The problem",
+      painTitle: "A list of businesses without a website costs twelve dollars.",
+      painLead: "That is exactly what every tool in this market sells. It just does not solve any of the four points where prospecting actually breaks.",
+      pain1: "You export 200 businesses. Two weeks later you no longer know who you already messaged.",
+      pain1s: "No status, no history, no date. The spreadsheet does not know either.",
+      pain2: "“No website field” in the data does not mean “no website”.",
+      pain2s: "Part of your list is already taken care of. You find out in the reply — or never.",
+      pain3: "The message is written. The owner still does not see what you would do differently.",
+      pain3s: "He has a website. It is old. For him it works. Words do not change that; a demo does.",
+      pain4: "Follow-ups do not happen, because nothing anywhere says when.",
+      pain4s: "Most jobs close on the second or third contact. That contact only happens if it is written down somewhere.",
+      idx3: "Sheet 3", idx3b: "How it runs",
+      flowTitle: "From a rectangle on the map to a signed job.",
+      flowLead: "No mockups. These are screenshots of the running tool — business names and numbers replaced, everything else real.",
+      step1N: "Step 1 · Find", step1T: "Draw an area. Get every business in it.",
+      step1B: "Client-Map pulls every hospitality business from the area — restaurants, cafés, bars, takeaways — from OpenStreetMap, enriched via Google Places if you want. Large areas are split into tiles so nothing gets lost.",
+      step1a: "Clustered pins show where density pays off", step1b: "Saved filters: “No website”, “Instagram only”, “Hot & untouched”", step1c: "A rescan never overwrites your work",
+      cap1: "Map · Wil region", cap1b: "4,335 businesses · 197 in view",
+      step2N: "Step 2 · Score", step2T: "The score says who needs a website — and who only looks like it.",
+      step2B: "An agent looks at the business's website and Instagram and assigns points: no website +40, broken or not mobile +30, outdated +20, Instagram active but no site +25. Unverified stays visibly unverified — a dashed ring instead of guesswork.",
+      step2a: "Free web check, quick check in 30 seconds, deep analysis as Markdown", step2b: "The reasoning sits next to the number, not hidden behind it", step2c: "Score whole areas at once",
+      cap2: "List · by score", cap2b: "Pub zum Engel · 45 points · site broken",
+      step3N: "Step 3 · Convince", step3T: "A demo site for that exact place. That is the argument.",
+      step3B: "One button in the business starts building a real, presentable website from the analysis — menu, hours, images, the tone of the house. Plus an outreach draft for WhatsApp, Instagram or email that names the owner and refers to his own site.",
+      step3a: "The app never sends anything. You read, edit, send yourself", step3b: "Demo folders are suggested to businesses, never auto-assigned", step3c: "The build runs in its own folder, no access to client projects",
+      cap3: "Map · old town", cap3b: "Café Bahnhof · demo built",
+      step4N: "Step 4 · Follow up", step4T: "The funnel shows where it is stuck.",
+      step4B: "Every contact gets logged: channel, outcome, what was said. Status moves along automatically — but only forwards; a customer never becomes a contact again. The follow-up date lives on the business, one click for +7, +14, +30 days.",
+      step4a: "The funnel counts cumulatively: this many reached at least this stage", step4b: "“Follow-up due” as a saved filter", step4c: "CSV export contains exactly what is on screen",
+      cap4: "List · funnel", cap4b: "Wil SG · 38 businesses · 2 customers",
+      idx4: "Sheet 4", idx4b: "The business",
+      anatTitle: "Everything about one place on one page.",
+      anatLead: "The detail panel is where you work. What it holds is deliberately separated: bookkeeping on top, facts below, actions at the bottom.",
+      cap5: "Panel · top", cap6: "Panel · bottom",
+      co1: "Score with reasoning", co1b: "45 points: website broken +30, Instagram inactive +15. Every point has a reason, and it sits right there.",
+      co2: "Unverified means unverified", co2b: "The yellow notice stays until an analysis has actually seen the website. Without it you message places that already have a good site.",
+      co3: "Pipeline and follow-up", co3b: "Status, last contact, next date. One question per place: when do I look at this again?",
+      co4: "Contact history", co4b: "Channel, outcome, note. “Meeting booked” moves to In conversation, “Job” to Customer — automatically, forwards only.",
+      co5: "Facts stay facts", co5b: "Hours, source, analysis, demo. What the agent corrects, it corrects here — never in your notes or your status.",
+      co6: "Five actions", co6b: "Free web check, quick check, analysis, build demo, outreach draft. Research on the cheap model, only the demo build on the big one.",
+      idx5: "Sheet 5", idx5b: "Planned pricing",
+      priceTitle: "The demo generator is the line between Solo and Pro.",
+      priceLead: "In euros, cancel monthly. None of it is bookable today — hence the early access below.",
+      tier0N: "Free", tier1N: "Solo", tier2N: "Pro", tier3N: "Agency", perMonth: "/ month",
+      tier0a: "25 leads per month", tier0b: "Map and pipeline", tier0c: "CSV export",
+      tier1a: "Unlimited leads", tier1b: "Website and Instagram scoring", tier1c: "Follow-ups and history",
+      tier2a: "Everything in Solo", tier2b: "Demo generator", tier2c: "Outreach drafts",
+      tier3a: "Multiple users", tier3b: "Shared pipeline", tier3c: "Territories per person",
+      earlyEyebrow: "Early access", earlyT: "19 € a month. Forever.",
+      earlyB: "For the first people who pay before launch. The price stays as long as you stay — even when Pro costs 79 €. If there is no launch, you get all of it back.",
+      earlyCta: "Lock the price",
+      idx6: "Sheet 6", idx6b: "Questions", faqTitle: "What you are probably wondering.",
+      faq1Q: "Where does the data come from?", faq1A: "OpenStreetMap, optionally enriched via Google Places. What gets scored is the business's own website — no review portals, no third-party profiles.",
+      faq2Q: "Does this exist, or is it an idea?", faq2A: "It runs. I use it daily for my own prospecting around Wil, Switzerland; the pictures above are from today. What is missing is everything that needs more than one user: accounts, billing, shared data. I build that only once it is clear somebody besides me wants it.",
+      faq3Q: "Are the businesses in the pictures real?", faq3A: "The map, the numbers and the scores are real. Names, phone numbers and addresses are replaced — nobody should read on this page that their website is broken.",
+      faq4Q: "Why only hospitality?", faq4A: "Because that is what I sell to and the categories I know. Hairdressers, trades and gyms are the same flow with different filters — tell me which one you need.",
+      faq5Q: "When can I use it?", faq5A: "When enough people say they need it. I am not building a multi-user product on a hunch. Sign up and you hear first.",
+      idx7: "Sheet 7",
+      closeT: "Tell me whether to build this.",
+      closeB: "The waitlist costs nothing and commits you to nothing. If you actually want it, lock the price — that is the answer I listen to.",
+      footer: "Built in Wil, Switzerland by Kevin, who uses it to message restaurants himself. Client-Map is a tool for one person today. This page decides whether it becomes a product."
+    }
+  };
+
+  var german = {};
+  document.querySelectorAll("[data-i18n]").forEach(function (node) { german[node.dataset.i18n] = node.innerHTML; });
+  TEXT.de = Object.assign(german, TEXT.de);
+
+  var lang = "de";
+  try {
+    var saved = window.localStorage.getItem("clientmap-lang");
+    if (saved === "en" || saved === "de") lang = saved;
+    else if ((navigator.language || "de").slice(0, 2) !== "de") lang = "en";
+  } catch (e) {}
+
+  function apply(next) {
+    lang = next;
+    var dict = TEXT[next];
+    document.querySelectorAll("[data-i18n]").forEach(function (node) {
+      var value = dict[node.dataset.i18n];
+      if (value == null) return;
+      if (next === "de") node.innerHTML = value; else node.textContent = value;
+    });
+    document.documentElement.lang = next;
+    document.querySelectorAll(".lang button").forEach(function (button) {
+      button.setAttribute("aria-pressed", String(button.dataset.lang === next));
+    });
+    try { window.localStorage.setItem("clientmap-lang", next); } catch (e) {}
+  }
+
+  document.querySelectorAll(".lang button").forEach(function (button) {
+    button.addEventListener("click", function () { apply(button.dataset.lang); });
+  });
+
+  apply(lang);
+})();
+</script>
+</body>
+</html>
