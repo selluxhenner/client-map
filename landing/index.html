@@ -11,19 +11,18 @@
 <meta property="og:url" content="https://clientmap.serviweb.ch/">
 <meta name="theme-color" content="#FFFFFF">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23fff'/%3E%3Cpath d='M6 26 26 6' stroke='%230057FF' stroke-width='4'/%3E%3C/svg%3E">
-<link rel="preload" href="fonts/handjet.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="fonts/schibsted-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
 
 <style>
 /* ------------------------------------------------------------------
    Client-Map Landing
-   Welt: Wim Crouwels Rasterspecimen. Ein sichtbares Konstruktionsraster
-   von 48 px traegt die Seite; Kanten, Zeilenhoehen und Versalhoehen
-   sitzen auf seinen Linien. Eine Farbe, eine Diagonale.
+   Welt: ein Schriftspecimen. Das Raster von 48 px ist nicht mehr
+   gezeichnet, sondern nur noch gefuehlt: Kanten, Zeilenhoehen und
+   Versalhoehen sitzen weiter auf seinen Linien. Eine Familie ueber ihre
+   ganze Breitenachse, eine Farbe, eine Diagonale.
    ------------------------------------------------------------------ */
 
-@font-face { font-family: "Handjet"; src: url("fonts/handjet.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
-@font-face { font-family: "Schibsted Grotesk"; src: url("fonts/schibsted-grotesk.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "Archivo"; src: url("fonts/archivo.woff2") format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
 
 :root {
   --cell: 48px;
@@ -31,20 +30,19 @@
   --q: calc(var(--cell) / 4);
   --white: #FFFFFF;
   --surface: #F5F7FA;
-  --grid: #E3E9F2;
   --ink: #111111;
   --ink-2: #4B5563;
   --blue: #0057FF;
   --blue-deep: #0041C2;
   --blue-wash: #E8F0FF;
 
-  --display: "Handjet", "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --body: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --face: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  /* Handjet: Versalhoehe 0.647 em, Versalien mittig in der Zeile. Bei
-     Zeilenhoehe = Versalhoehe + halbe Zelle liegt die Versaloberkante
-     eine Viertelzelle unter dem Zeilenanfang; .snap zieht sie hoch. */
-  --cap-to-font: 1.546;
+  /* Archivo: Versalhoehe 0.686 em. Zeilenhoehe = Versalhoehe + halbe
+     Zelle; die Versaloberkante liegt dann 11 px unter dem Zeilenanfang,
+     und .snap zieht sie auf die Rasterlinie zurueck. */
+  --cap-to-font: 1.4577;
+  --cap-lift: 11px;
 
   color-scheme: light only;
 }
@@ -58,41 +56,42 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   background-color: var(--white);
-  background-image:
-    linear-gradient(var(--grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: var(--cell) var(--cell);
   color: var(--ink);
-  font-family: var(--body);
+  font-family: var(--face);
   font-size: 17px;
   line-height: var(--half);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
-html.no-grid body { background-image: none; }
 
 ::selection { background: var(--blue); color: var(--white); }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
-h1, h2, h3 { margin: 0; font-weight: 700; line-height: 1; text-wrap: balance; }
+h1, h2, h3 { margin: 0; font-weight: 700; line-height: 1; text-wrap: balance; hyphens: auto; }
 p { margin: 0; }
 a { color: inherit; }
 img { display: block; max-width: 100%; height: auto; }
 button { font: inherit; color: inherit; }
 a, button, summary { touch-action: manipulation; }
 
-.skip { position: absolute; left: var(--half); top: -100px; z-index: 40; background: var(--blue); color: var(--white); padding: .5rem .8rem; font-family: var(--display); text-transform: uppercase; letter-spacing: .05em; }
+.skip { position: absolute; left: var(--half); top: -100px; z-index: 40; background: var(--blue); color: var(--white); padding: .5rem .8rem; font-family: var(--face); text-transform: uppercase; letter-spacing: .05em; }
 .skip:focus { top: var(--half); }
 
 /* Rasterschrift */
-.d { font-family: var(--display); font-weight: 700; font-variation-settings: "ELGR" 2, "ELSH" 6; letter-spacing: .01em; text-transform: uppercase; }
-.lbl { font-family: var(--display); font-weight: 500; font-variation-settings: "ELGR" 2, "ELSH" 6; font-size: 1.1rem; letter-spacing: .05em; text-transform: uppercase; line-height: var(--half); color: var(--blue); font-variant-numeric: tabular-nums; }
+/* Die Breitenachse traegt die Rolle: je breiter, desto monumentaler.
+   Versalien fuer die Anzeige, schmal und gesperrt fuer Beschriftungen. */
+.d { font-family: var(--face); font-weight: 800; font-stretch: 125%; letter-spacing: -.005em; text-transform: uppercase; }
+.lbl { font-family: var(--face); font-weight: 600; font-stretch: 75%; font-size: .85rem; letter-spacing: .12em; text-transform: uppercase; line-height: var(--half); color: var(--blue); font-variant-numeric: tabular-nums; }
 
-/* Versalhoehe auf Zellen: cap = n Zellen, Zeile = cap + halbe Zelle */
-.cap-1_5 { font-size: calc(var(--cell) * 1.5 * var(--cap-to-font)); line-height: calc(var(--cell) * 2); }
-.cap-1   { font-size: calc(var(--cell) * 1 * var(--cap-to-font)); line-height: calc(var(--cell) * 1.5); }
-.cap-0_5 { font-size: calc(var(--cell) * .5 * var(--cap-to-font)); line-height: var(--cell); }
-.snap { margin-top: calc(var(--q) * -1); padding-bottom: var(--q); }
+/* Versalhoehe auf Zellen: cap = n Zellen, Zeile = cap + halbe Zelle.
+   Die Zeilenhoehe rechnet in em, damit der Rhythmus auch bei kleineren
+   Groessen auf schmalen Schirmen stehen bleibt. */
+.cap-1_5 { font-size: calc(var(--cell) * 1.5 * var(--cap-to-font)); }
+.cap-1   { font-size: calc(var(--cell) * .875 * var(--cap-to-font)); }
+.cap-0_5 { font-size: calc(var(--cell) * .5 * var(--cap-to-font)); }
+.cap-1_5, .cap-1, .cap-0_5 { line-height: calc(.686em + var(--half)); }
+@media (max-width: 720px) { .cap-1 { font-size: calc(var(--cell) * .7 * var(--cap-to-font)); } }
+.snap { margin-top: calc(var(--cap-lift) * -1); padding-bottom: var(--cap-lift); }
 
 .frame { width: min(calc(var(--cell) * 24), 100% - var(--cell)); margin-inline: auto; }
 @media (max-width: 720px) { .frame { width: calc(100% - var(--cell)); } }
@@ -105,28 +104,26 @@ a, button, summary { touch-action: manipulation; }
 /* Zwei Zellen einschliesslich der Trennlinie, damit alles darunter
    weiter auf den Rasterlinien sitzt. */
 .top .frame { display: flex; align-items: center; gap: var(--half); height: calc(var(--cell) * 2 - 1px); }
-.wordmark { display: inline-flex; align-items: center; gap: .6rem; font-size: 1.7rem; text-decoration: none; line-height: 1; }
+.wordmark { display: inline-flex; align-items: center; gap: .6rem; font-size: 1.15rem; letter-spacing: .02em; text-decoration: none; line-height: 1; }
 .wordmark svg { width: 22px; height: 22px; }
-.nav { display: none; gap: calc(var(--cell) * .75); margin-left: var(--cell); font-family: var(--display); font-weight: 500; font-variation-settings: "ELGR" 2, "ELSH" 6; font-size: 1.15rem; letter-spacing: .04em; text-transform: uppercase; }
+.nav { display: none; gap: calc(var(--cell) * .75); margin-left: var(--cell); font-family: var(--face); font-weight: 600; font-stretch: 80%; font-size: 0.897rem; letter-spacing: .1em; text-transform: uppercase; }
 .nav a { text-decoration: none; color: var(--ink-2); padding: .3rem 0; }
 .nav a:hover { color: var(--blue); }
 @media (min-width: 900px) { .nav { display: flex; } }
 .top-spacer { flex: 1; }
 
 .switch { display: inline-flex; border: 1px solid var(--ink); }
-.switch button { appearance: none; border: 0; background: var(--white); padding: .35rem .7rem; cursor: pointer; font-family: var(--display); font-weight: 500; font-variation-settings: "ELGR" 2, "ELSH" 6; font-size: 1.05rem; letter-spacing: .05em; text-transform: uppercase; line-height: 1; }
+.switch button { appearance: none; border: 0; background: var(--white); padding: .35rem .7rem; cursor: pointer; font-family: var(--face); font-weight: 600; font-stretch: 80%; font-size: 0.819rem; letter-spacing: .1em; text-transform: uppercase; line-height: 1; }
 .switch button + button { border-left: 1px solid var(--ink); }
 .switch button[aria-pressed="true"] { background: var(--ink); color: var(--white); }
-.grid-toggle { display: none; }
-@media (min-width: 720px) { .grid-toggle { display: inline-flex; } }
 
 /* Menue unter 900 px: eine Aufklappliste, Tastatur und Touch */
 .menu { position: relative; }
-.menu summary { list-style: none; cursor: pointer; border: 1px solid var(--ink); padding: .35rem .7rem; font-family: var(--display); font-weight: 500; font-variation-settings: "ELGR" 2, "ELSH" 6; font-size: 1.05rem; letter-spacing: .05em; text-transform: uppercase; line-height: 1; }
+.menu summary { list-style: none; cursor: pointer; border: 1px solid var(--ink); padding: .35rem .7rem; font-family: var(--face); font-weight: 600; font-stretch: 80%; font-size: 0.819rem; letter-spacing: .1em; text-transform: uppercase; line-height: 1; }
 .menu summary::-webkit-details-marker { display: none; }
 .menu[open] summary { background: var(--ink); color: var(--white); }
 .menu-list { position: absolute; right: 0; top: calc(100% + var(--q)); min-width: calc(var(--cell) * 5); background: var(--white); border: 1px solid var(--blue); display: grid; }
-.menu-list a { display: block; padding: .7rem .9rem; border-bottom: 1px solid var(--blue); text-decoration: none; font-family: var(--display); font-weight: 500; font-variation-settings: "ELGR" 2, "ELSH" 6; font-size: 1.1rem; letter-spacing: .04em; text-transform: uppercase; }
+.menu-list a { display: block; padding: .7rem .9rem; border-bottom: 1px solid var(--blue); text-decoration: none; font-family: var(--face); font-weight: 600; font-stretch: 80%; font-size: 0.858rem; letter-spacing: .1em; text-transform: uppercase; }
 .menu-list a:last-child { border-bottom: 0; }
 .menu-list a:hover { background: var(--blue-wash); }
 @media (min-width: 900px) { .menu { display: none; } }
@@ -136,7 +133,7 @@ a, button, summary { touch-action: manipulation; }
 .btn {
   display: inline-flex; align-items: center; justify-content: space-between; gap: 1rem;
   height: var(--cell); padding: 0 1rem 0 1.1rem; border: 1px solid var(--blue);
-  font-family: var(--display); font-weight: 500; font-variation-settings: "ELGR" 2, "ELSH" 6; font-size: 1.25rem; letter-spacing: .04em; text-transform: uppercase; line-height: 1;
+  font-family: var(--face); font-weight: 600; font-stretch: 80%; font-size: 0.975rem; letter-spacing: .1em; text-transform: uppercase; line-height: 1;
   text-decoration: none; cursor: pointer; background: var(--white); color: var(--ink);
   transition: transform 160ms cubic-bezier(.23, 1, .32, 1), background 160ms ease;
 }
@@ -160,17 +157,18 @@ a, button, summary { touch-action: manipulation; }
 }
 
 .headline-wrap { position: relative; }
-.headline .line { display: block; white-space: nowrap; }
-.diagonal { position: absolute; right: 0; bottom: 0; width: calc(var(--cell) * 3); height: calc(var(--cell) * 3); pointer-events: none; }
+.headline { font-size: clamp(2.5rem, 6.6vw, calc(var(--cell) * 1.5 * var(--cap-to-font))); line-height: calc(.686em + var(--half)); }
+.headline .line { display: block; }
+.diagonal { position: absolute; right: 0; bottom: var(--half); width: calc(var(--cell) * 2); height: calc(var(--cell) * 2); pointer-events: none; }
 .diagonal line { stroke: var(--blue); stroke-width: 4; }
-@media (max-width: 900px) { .diagonal { width: calc(var(--cell) * 2); height: calc(var(--cell) * 2); } }
+@media (max-width: 900px) { .diagonal { width: calc(var(--cell) * 1.5); height: calc(var(--cell) * 1.5); } }
 
-/* Die eine orchestrierte Bewegung: das Raster fuellt die Ueberschrift
-   Zelle fuer Zelle. Weisse Zellen liegen ueber dem Satz und verschwinden
-   in Leserichtung; ohne Bewegung gibt es keine Zellen. */
-.fill { position: absolute; inset: 0; display: grid; pointer-events: none; }
-.fill i { background: var(--white); animation: cellfill 1ms steps(1, end) forwards; animation-delay: calc(var(--n) * 9ms); }
-@keyframes cellfill { to { opacity: 0; } }
+/* Die eine orchestrierte Bewegung: die Diagonale zeichnet sich einmal
+   selbst, von unten links nach oben rechts. Ohne Bewegung steht sie
+   sofort da. */
+.diagonal line { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.diagonal.draw line { stroke-dashoffset: 1; animation: draw 720ms cubic-bezier(.23, 1, .32, 1) 140ms forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
 
 .hero-sub { margin-top: var(--cell); min-height: calc(var(--cell) * 2); font-size: 19px; line-height: var(--half); max-width: 30em; }
 .hero-sub-en { max-width: 32em; }
@@ -182,9 +180,9 @@ a, button, summary { touch-action: manipulation; }
 .block-head .lbl { color: var(--ink); }
 .block-head .lbl.blue { color: var(--blue); }
 .block-body { background: var(--surface); position: relative; }
-.block-foot { display: flex; justify-content: space-between; align-items: center; height: var(--cell); padding: 0 .75rem; border-top: 1px solid var(--blue); font-family: var(--display); font-weight: 500; font-variation-settings: "ELGR" 2, "ELSH" 6; font-size: 1.1rem; letter-spacing: .05em; text-transform: uppercase; text-decoration: none; }
+.block-foot { display: flex; justify-content: space-between; align-items: center; height: var(--cell); padding: 0 .75rem; border-top: 1px solid var(--blue); font-family: var(--face); font-weight: 600; font-stretch: 75%; font-size: .85rem; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; }
 .block-foot:hover { background: var(--blue-wash); }
-.plus { font-family: var(--display); font-weight: 500; font-size: 1.6rem; line-height: 1; color: var(--blue); }
+.plus { font-family: var(--face); font-weight: 400; font-size: 1.5rem; line-height: 1; color: var(--blue); }
 .hero-right .block-body img { width: 100%; height: calc(var(--cell) * 5); object-fit: cover; object-position: left top; }
 
 .legend { display: grid; border-top: 1px solid var(--blue); }
@@ -198,12 +196,14 @@ a, button, summary { touch-action: manipulation; }
 /* ---------- Abschnitte ---------- */
 
 .sec { padding-block: calc(var(--cell) * 2); }
+.sec-head > * { min-width: 0; }
 .sec-head { display: grid; gap: var(--half) var(--cell); margin-bottom: var(--cell); align-items: start; }
 @media (min-width: 900px) { .sec-head { grid-template-columns: 7fr 5fr; } }
-.sec-head h2 { max-width: 14em; }
+.sec-head h2 { max-width: 18em; font-stretch: 100%; }
 .sec-head p { color: var(--ink-2); max-width: 40em; padding-top: var(--q); }
 
 .rows { border-top: 1px solid var(--blue); }
+.row > * { min-width: 0; }
 .row { display: grid; grid-template-columns: 1fr; gap: .4rem var(--cell); padding: var(--half) 0; border-bottom: 1px solid var(--blue); }
 @media (min-width: 900px) { .row { grid-template-columns: 7fr 5fr; align-items: baseline; } }
 .row p:first-child { font-size: 20px; font-weight: 500; line-height: var(--half); max-width: 30em; text-wrap: pretty; }
@@ -215,9 +215,9 @@ a, button, summary { touch-action: manipulation; }
   .step { grid-template-columns: 5fr 7fr; }
   .step.flip > .step-text { order: 2; }
 }
-.step-text { display: flex; flex-direction: column; gap: var(--half); max-width: 32em; }
+.step-text { min-width: 0; display: flex; flex-direction: column; gap: var(--half); max-width: 32em; }
 .step-n { color: var(--blue); }
-.step-text h3 { max-width: 16em; }
+.step-text h3 { max-width: 20em; font-stretch: 100%; }
 .step-text p { color: var(--ink-2); }
 .step-text ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .4rem; font-size: 15px; color: var(--ink-2); }
 .step-text li { padding-left: 1.1rem; position: relative; }
@@ -227,10 +227,10 @@ a, button, summary { touch-action: manipulation; }
 .anatomy { display: grid; gap: var(--cell); align-items: start; }
 @media (min-width: 900px) { .anatomy { grid-template-columns: 7fr 5fr; } }
 .panels { display: grid; grid-template-columns: 1fr 1fr; gap: var(--half); }
-.mark { position: absolute; left: var(--x); top: var(--y); width: var(--half); height: var(--half); display: grid; place-items: center; background: var(--blue); color: var(--white); font-family: var(--display); font-weight: 700; font-variation-settings: "ELGR" 2, "ELSH" 6; font-size: 1.1rem; line-height: 1; }
+.mark { position: absolute; left: var(--x); top: var(--y); width: var(--half); height: var(--half); display: grid; place-items: center; background: var(--blue); color: var(--white); font-family: var(--face); font-weight: 700; font-stretch: 100%; font-size: .9rem; line-height: 1; }
 .callouts { border-top: 1px solid var(--blue); }
 .callout { display: grid; grid-template-columns: var(--half) 1fr; gap: .8rem; padding: .8rem 0; border-bottom: 1px solid var(--blue); }
-.callout-n { width: var(--half); height: var(--half); display: grid; place-items: center; background: var(--blue); color: var(--white); font-family: var(--display); font-weight: 700; font-variation-settings: "ELGR" 2, "ELSH" 6; font-size: 1.1rem; line-height: 1; margin-top: .1rem; }
+.callout-n { width: var(--half); height: var(--half); display: grid; place-items: center; background: var(--blue); color: var(--white); font-family: var(--face); font-weight: 700; font-stretch: 100%; font-size: .9rem; line-height: 1; margin-top: .1rem; }
 .callout b { display: block; font-weight: 700; }
 .callout p { font-size: 15px; color: var(--ink-2); }
 
@@ -238,14 +238,14 @@ a, button, summary { touch-action: manipulation; }
 .tiers { display: grid; grid-template-columns: 1fr; border: 1px solid var(--blue); }
 @media (min-width: 720px) { .tiers { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1040px) { .tiers { grid-template-columns: repeat(4, 1fr); } }
-.tier { padding: var(--half); display: flex; flex-direction: column; gap: var(--half); background: var(--white); }
+.tier { min-width: 0; padding: var(--half); display: flex; flex-direction: column; gap: var(--half); background: var(--white); }
 .tier + .tier { border-top: 1px solid var(--blue); }
 @media (min-width: 720px) { .tier:nth-child(2n) { border-left: 1px solid var(--blue); } .tier:nth-child(n + 3) { border-top: 1px solid var(--blue); } .tier:nth-child(2) { border-top: 0; } }
 @media (min-width: 1040px) { .tier + .tier { border-top: 0; border-left: 1px solid var(--blue); } }
 .tier.plane { background: var(--blue); color: var(--white); }
 .tier.plane .lbl, .tier.plane .tier-note { color: var(--white); }
-.tier-price { font-variant-numeric: tabular-nums; }
-.tier-price small { font-family: var(--body); font-weight: 400; font-size: 15px; letter-spacing: 0; margin-left: .35rem; text-transform: none; }
+.tier-price { font-stretch: 100%; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.tier-price small { font-family: var(--face); font-weight: 400; font-size: 15px; letter-spacing: 0; margin-left: .35rem; text-transform: none; }
 .tier ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .4rem; font-size: 15px; }
 .tier li { padding-left: 1rem; position: relative; }
 .tier li::before { content: ""; position: absolute; left: 0; top: .5em; width: .4rem; height: .4rem; background: currentColor; }
@@ -259,13 +259,13 @@ a, button, summary { touch-action: manipulation; }
 .faq details { border-bottom: 1px solid var(--blue); }
 .faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: .85rem 0; font-weight: 700; font-size: 19px; }
 .faq summary::-webkit-details-marker { display: none; }
-.faq summary::after { content: "+"; font-family: var(--display); font-weight: 500; font-size: 1.9rem; line-height: 1; color: var(--blue); }
+.faq summary::after { content: "+"; font-family: var(--face); font-weight: 400; font-size: 1.7rem; line-height: 1; color: var(--blue); }
 .faq details[open] summary::after { content: "–"; }
 .faq-body { padding: 0 0 1rem; color: var(--ink-2); max-width: 52em; }
 
 .close { display: grid; gap: var(--cell); align-items: center; padding-block: calc(var(--cell) * 2); }
 @media (min-width: 900px) { .close { grid-template-columns: 7fr 5fr; } }
-.close h2 { max-width: 10em; }
+.close h2 { max-width: 14em; font-stretch: 100%; }
 .close p { color: var(--ink-2); max-width: 34em; margin-top: var(--half); }
 
 footer { border-top: 1px solid var(--blue); background: var(--white); }
@@ -292,10 +292,6 @@ footer a { color: var(--ink-2); }
       <a href="#fragen" data-i18n="navFaq">Fragen</a>
     </nav>
     <div class="top-spacer"></div>
-    <div class="switch grid-toggle" role="group" aria-label="Konstruktionsraster">
-      <button type="button" id="gridOn" aria-pressed="true" data-i18n="gridOn">Raster</button>
-      <button type="button" id="gridOff" aria-pressed="false" data-i18n="gridOff">Ohne</button>
-    </div>
     <div class="switch" role="group" aria-label="Sprache / Language">
       <button type="button" data-lang="de" aria-pressed="true">DE</button>
       <button type="button" data-lang="en" aria-pressed="false">EN</button>
@@ -321,7 +317,7 @@ footer a { color: var(--ink-2); }
           <h1 class="headline d cap-1_5" id="headline" data-lines="Die Liste|ist der|einfache|Teil." data-lines-en="The list|is the|easy|part.">
             <span class="line">Die Liste</span><span class="line">ist der</span><span class="line">einfache</span><span class="line">Teil.</span>
           </h1>
-          <svg class="diagonal" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="100" x2="100" y2="0"/></svg>
+          <svg class="diagonal" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="100" x2="100" y2="0" pathLength="1"/></svg>
         </div>
         <p class="hero-sub" data-i18n="heroSub">Client-Map findet die Gastro-Betriebe in deiner Region, prüft ihre Website und sagt dir, warum sie eine neue braucht. Dann baut es eine Demo-Seite zum Vorzeigen und erinnert dich daran, nachzufassen.</p>
         <div class="cta-row">
@@ -619,21 +615,9 @@ footer a { color: var(--ink-2); }
   var menu = document.querySelector(".menu");
   if (menu) menu.querySelectorAll("a").forEach(function (a) { a.addEventListener("click", function () { menu.removeAttribute("open"); }); });
 
-  /* Konstruktionsraster: ein echter Zustand, gemerkt pro Besucher. */
-  var root = document.documentElement;
-  function setGrid(on) {
-    root.classList.toggle("no-grid", !on);
-    document.getElementById("gridOn").setAttribute("aria-pressed", String(on));
-    document.getElementById("gridOff").setAttribute("aria-pressed", String(!on));
-    try { window.localStorage.setItem("clientmap-grid", on ? "on" : "off"); } catch (e) {}
-  }
-  document.getElementById("gridOn").addEventListener("click", function () { setGrid(true); });
-  document.getElementById("gridOff").addEventListener("click", function () { setGrid(false); });
-  try { if (window.localStorage.getItem("clientmap-grid") === "off") setGrid(false); } catch (e) {}
 
   /* Ueberschrift: Zeilen aus dem data-Attribut, Zelle fuer Zelle enthuellt. */
   var headline = document.getElementById("headline");
-  var wrap = document.getElementById("headlineWrap");
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function setLines(text) {
@@ -646,28 +630,9 @@ footer a { color: var(--ink-2); }
     });
   }
 
-  function revealByCells() {
-    if (reduce) return;
-    var old = wrap.querySelector(".fill");
-    if (old) old.remove();
-    var cell = parseFloat(getComputedStyle(root).getPropertyValue("--cell")) || 48;
-    var rect = headline.getBoundingClientRect();
-    var cols = Math.ceil(rect.width / cell), rows = Math.ceil(rect.height / cell);
-    var fill = document.createElement("div");
-    fill.className = "fill";
-    fill.setAttribute("aria-hidden", "true");
-    fill.style.gridTemplateColumns = "repeat(" + cols + ", " + cell + "px)";
-    fill.style.gridTemplateRows = "repeat(" + rows + ", " + cell + "px)";
-    fill.style.width = cols * cell + "px";
-    fill.style.height = rows * cell + "px";
-    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
-      var i = document.createElement("i");
-      i.style.setProperty("--n", String(r * cols + c));
-      fill.appendChild(i);
-    }
-    fill.addEventListener("animationend", function () { if (fill.lastChild === undefined) return; }, true);
-    wrap.appendChild(fill);
-    setTimeout(function () { fill.remove(); }, rows * cols * 9 + 400);
+  function drawDiagonal() {
+    var d = document.querySelector(".diagonal");
+    if (d) d.classList.add("draw");
   }
 
   /* ------------------------------------------------------------------
@@ -679,7 +644,6 @@ footer a { color: var(--ink-2); }
       linkMissing: "Link not set yet: add the form and Stripe URLs at the top of the script block.",
       skip: "Skip to content", menu: "Menu",
       navFlow: "How it runs", navDetail: "The business", navPricing: "Pricing", navFaq: "Questions",
-      gridOn: "Grid", gridOff: "Plain",
       heroSub: "Client-Map finds the restaurants and cafés in your area, checks their website and tells you why it needs a new one. Then it builds a demo site to show the owner and reminds you to follow up.",
       ctaWaitlist: "Join the waitlist", ctaEarly: "Early access, 19 € a month",
       heroNote: "For web freelancers in Switzerland, Germany and Austria. Runs for one person today; this page decides whether it becomes a product.",
@@ -781,9 +745,10 @@ footer a { color: var(--ink-2); }
 
   apply(lang);
 
-  /* Die Enthuellung laeuft erst, wenn die Rasterschrift wirklich da ist. */
-  if (!reduce && document.fonts && document.fonts.load) {
-    document.fonts.load("700 96px Handjet").then(function () { return document.fonts.ready; }).then(revealByCells);
+  /* Erst zeichnen, wenn die Schrift steht: sonst laeuft die Bewegung
+     gegen einen Umbruch, den der Besucher gleich danach sieht. */
+  if (!reduce && document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(drawDiagonal);
   }
 })();
 </script>
