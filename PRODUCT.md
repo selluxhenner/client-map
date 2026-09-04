@@ -98,13 +98,16 @@ previous page's look is not a constraint.
 
 ## Evidence on Hand
 
-- Six anonymised screenshots of the running app at 2×, WebP, in
-  `landing/screenshots/`: region map with clusters (`karte-region`, plus a
-  cropped `hero` variant), old-town map with an open business (`karte-detail`),
-  list with funnel (`liste`), list with a 45-point business open
-  (`liste-detail`), detail panel top and bottom (`detail-kopf`,
-  `detail-aktionen`). Real numbers visible in them: 4 335 businesses on file,
-  38 in Wil SG, funnel 36 → 4 → 4 → 3 → 2 → 2 → 2, 2 customers.
+- Anonymised screenshots of the running app at 2×, WebP, in
+  `landing/screenshots/`: Berlin at city zoom with clusters (`karte-region`,
+  plus a cropped `hero` variant), Berlin-Neukölln at street level with an open
+  business (`karte-detail`), list with funnel (`liste`), list with a 45-point
+  business open (`liste-detail`), detail panel top and bottom (`detail-kopf`,
+  `detail-aktionen`). Real numbers in them: 4 335 businesses on file of which
+  2 617 are in Berlin, funnel 36 → 4 → 4 → 3 → 2 → 2 → 2, 2 customers,
+  3 demos built. The Berlin records are all status `neu`; the pipeline
+  progress in the list screenshots comes from the Wil SG records, so a
+  Berlin-filtered funnel would be empty and must not be captioned as Berlin.
 - Market research in the validation plan (competitor table, gaps): Webleadr sells
   100 credits for $12, i.e. a list of businesses without a website at roughly
   twelve dollars per hundred; Huntly, No-Site Search, Crective, FindLeadly,
