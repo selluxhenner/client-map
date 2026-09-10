@@ -6,6 +6,7 @@ import { renderFilters, refreshCounts } from './filters.js';
 import { initDetail, showVenue } from './detail.js';
 import { initJobs, startBatch, onVenueUpdate } from './jobs.js';
 import { initScanStatus, scanBegin, scanEnd, trackBatch } from './scan-status.js';
+import { startAnreicherung } from './anreicherung.js';
 
 let map;
 let cluster;
@@ -258,6 +259,16 @@ function wireTopbar() {
     if (bericht?.ids?.length) {
       trackBatch(bericht.ids, `${bericht.ids.length} Betriebe werden bewertet`);
     }
+  });
+
+  // Web-Check ueber denselben Ausschnitt. Anders als der Tiefen-Scan laeuft
+  // er ohne Agenten: nichts wird geraten, nur abgerufen - dafuer beantwortet
+  // er auch nur die messbaren Fragen.
+  document.getElementById('daten-sammeln').addEventListener('click', async () => {
+    const filter = Object.fromEntries(new URLSearchParams(state.filter));
+    delete filter.nurAusschnitt;
+    filter.bbox = bboxParam();
+    await startAnreicherung(filter);
   });
 
   const addBtn = document.getElementById('add-pin');

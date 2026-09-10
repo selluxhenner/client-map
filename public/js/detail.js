@@ -228,6 +228,10 @@ function render() {
         el('dd', {}, v.rating ? `${v.rating} ★ (${v.review_count ?? '?'})` : '–'),
         el('dt', {}, 'Quelle'), el('dd', {}, v.source === 'osm' ? 'OpenStreetMap' : v.source),
         el('dt', {}, 'Analyse'), el('dd', {}, formatDate(v.last_analysis_at)),
+        el('dt', {}, 'Web-Check'),
+        el('dd', {}, v.web_check_at
+          ? `${formatDate(v.web_check_at)}${v.web_check_note ? ` — ${v.web_check_note}` : ''}`
+          : '–'),
         el('dt', {}, 'Demo'),
         el('dd', {}, v.demo_path
           ? [
@@ -275,6 +279,9 @@ function render() {
   inner.append(
     el('div', { class: 'block' }, [
       el('h3', {}, 'Aktionen'),
+      // Steht bewusst vor den Agenten-Laeufen: was sich messen laesst, muss
+      // niemand recherchieren lassen.
+      el('div', { class: 'links' }, [webCheckKnopf(v)]),
       el('div', { class: 'links' }, actions.map(({ kind, icon, fallback }) => {
         const meta = kinds[kind];
         const ready = Boolean(meta?.available);
@@ -559,6 +566,43 @@ function statusHinweis(v) {
   }
 
   return null;
+}
+
+/**
+ * Web-Check fuer einen einzelnen Betrieb: Website abrufen, Telefon, Mail und
+ * Social-Links einsammeln. Zwei Sekunden, kein Kontingent - deshalb keine
+ * Rueckfrage und keine Warteschlange, sondern sofort und mit Antwort.
+ */
+function webCheckKnopf(v) {
+  const knopf = el('button', {
+    class: 'btn',
+    title: v.website
+      ? 'Ruft die hinterlegte Website ab und sammelt Telefon, E-Mail, Instagram und Facebook ein. Gratis.'
+      : 'Für diesen Betrieb ist keine Website hinterlegt — ohne Google-Schlüssel gibt es hier nichts zu messen. Dann hilft der Schnell-Check.',
+  }, '⚡ Web-Check (gratis)');
+
+  knopf.addEventListener('click', async () => {
+    const beschriftung = knopf.textContent;
+    knopf.disabled = true;
+    knopf.textContent = '⚡ prüft …';
+    try {
+      const res = await post(`/anreicherung/betrieb/${v.id}`);
+      if (res?.venue) {
+        current = res.venue;
+        upsertLocal(res.venue);
+        onChange(res.venue);
+        render();
+      }
+      toast(res?.notiz || 'Geprüft');
+    } catch (err) {
+      fail(err);
+    } finally {
+      knopf.disabled = false;
+      knopf.textContent = beschriftung;
+    }
+  });
+
+  return knopf;
 }
 
 /**

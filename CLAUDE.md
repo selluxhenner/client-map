@@ -34,6 +34,9 @@ npm run dev        # mit --watch
 - **Filterlogik** liegt einmal in `server/lib/filters.js` und wird von Karte,
   Liste und CSV-Export geteilt. Der Export enthält damit garantiert genau das,
   was auf dem Bildschirm steht.
+- **Anreicherung ohne Agent** laeuft ueber `server/lib/enrich.js` und
+  schreibt wie alles andere durch `venue-store.js`. Was sich per HTTP messen
+  laesst, kostet kein Kontingent — siehe "Messen und urteilen".
 - **Farben und Punkte** stehen ausschliesslich in `server/scoring.js` und
   werden über `/api/config` ans Frontend geliefert. Keine Farbwerte im
   Frontend hartkodieren.
@@ -102,6 +105,33 @@ Rescan derselben Region muss folgenlos bleiben.
 - Ein Schnell-Check über einen Betrieb mit vorhandener Tiefen-Analyse frischt
   nur Faktenfelder auf: `analysis_path`, `analysis_summary` und
   `analysis_kind` bleiben stehen. Sonst würde Breite Tiefe überschreiben.
+
+## Messen und urteilen sind zwei Sachen
+
+Der **Web-Check** (`server/lib/webcheck.js`, `server/lib/enrich.js`) holt ohne
+Agenten, was sich abrufen laesst: laeuft die Seite, Telefon, Mail, Instagram,
+Facebook. Acht gleichzeitig, rund zwei Sekunden je Betrieb, kein Kontingent.
+Er ist damit die Grundlast fuer den ganzen Bestand; Schnell-Check und Analyse
+bleiben fuer das, was man nicht messen kann.
+
+- **Er urteilt nicht.** `gut` vergibt er nie und `veraltet` nur bei
+  Bautechnik, die man sehen kann (Frames, `<font>`, Flash). Eine erreichbare,
+  mobiltaugliche Seite ist fuer ihn hoechstens `ok`.
+- **Er ueberschreibt kein Urteil.** `statusEntscheid()` laesst `gut` und
+  `veraltet` stehen; nur ein harter Netzbefund (Domain existiert nicht,
+  Weiterleitung auf Facebook) korrigiert sie.
+- **Ein Fehlschlag ist kein Befund.** Jeder misslungene Abruf wird einmal
+  wiederholt, und nur `ENOTFOUND` und `ECONNREFUSED` gelten als Antwort ueber
+  den Host. `EAI_AGAIN` gehoert ausdruecklich nicht dazu: unter acht
+  gleichzeitigen Abrufen verschluckt sich der Namensdienst, und im ersten Lauf
+  hat genau das eine lebende Website als "Domain existiert nicht" in die
+  Datenbank geschrieben. Diese Liste nicht verlaengern.
+- **Er fuellt nur leere Felder** und laesst Notizen, Tags und den
+  Pipeline-Status in Ruhe. `web_check_at`/`web_check_note` sind bewusst eigene
+  Spalten neben `analysis_*` — sonst wuerde ein Sammellauf ueber 400 Betriebe
+  jede Recherche ueberschreiben.
+- **`keine` darf nur Google setzen.** Ohne hinterlegte Website hat der
+  Web-Check nichts zu messen; ein fehlender OSM-Tag bleibt kein Beweis.
 
 ## Analyse-Ergebnisse
 

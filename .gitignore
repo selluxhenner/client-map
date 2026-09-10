@@ -9,3 +9,6 @@ data/analysen/
 
 # Impeccable Arbeitsdateien (Mocks, Reviews, Build-Status)
 .impeccable/
+
+# Datenbank-Sicherungen (VACUUM INTO) — gehoeren nie ins Repo
+data/sicherungen/

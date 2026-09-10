@@ -213,6 +213,20 @@ const migrations = [
       'INSERT INTO saved_filters (name, query, builtin, sort_order) VALUES (?, ?, 1, ?)'
     ).run('⏰ Wiedervorlage fällig', 'wiedervorlage=faellig', 4);
   },
+
+  // 8 - Sammel-Anreicherung (Web-Check): wann wurde die Website eines
+  //     Betriebs zuletzt gemessen, und was kam dabei heraus.
+  //
+  //     Bewusst zwei eigene Spalten und nicht analysis_*: der Web-Check misst
+  //     Tatsachen, die Analyse urteilt. Wuerden sie sich dieselben Felder
+  //     teilen, wuerde ein Sammellauf ueber 400 Betriebe jede vorhandene
+  //     Recherche ueberschreiben - Breite duerfte Tiefe loeschen.
+  () => {
+    db.exec(`
+      ALTER TABLE venues ADD COLUMN web_check_at   TEXT;
+      ALTER TABLE venues ADD COLUMN web_check_note TEXT;
+    `);
+  },
 ];
 
 const current = db.pragma('user_version', { simple: true });

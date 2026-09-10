@@ -5,6 +5,7 @@ import { createInterface } from 'node:readline';
 import { ROOT } from './db.js';
 import { venuesRouter } from './routes/venues.js';
 import { discoverRouter } from './routes/discover.js';
+import { anreicherungRouter } from './routes/anreicherung.js';
 import { metaRouter } from './routes/meta.js';
 import { jobsRouter } from './routes/jobs.js';
 import { demosRouter } from './routes/demos.js';
@@ -17,6 +18,7 @@ app.use(express.json({ limit: '2mb' }));
 
 app.use('/api', metaRouter);
 app.use('/api', discoverRouter);
+app.use('/api', anreicherungRouter);
 app.use('/api', jobsRouter);
 app.use('/api', demosRouter);
 app.use('/api', wartungRouter);

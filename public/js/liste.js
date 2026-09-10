@@ -1,10 +1,12 @@
-import { el, clear, get, fail, debounce, formatDate } from './api.js';
+import { el, clear, fill, get, fail, debounce, formatDate } from './api.js';
 import {
   state, loadConfig, loadVenues, on, setFilter, filterValue, select, scoreBandFor,
 } from './state.js';
 import { renderFilters } from './filters.js';
 import { initDetail, showVenue } from './detail.js';
 import { initJobs, onVenueUpdate } from './jobs.js';
+import { initScanStatus } from './scan-status.js';
+import { startAnreicherung } from './anreicherung.js';
 
 const COLUMNS = [
   { key: 'score',            label: 'Score',     sort: 'score_desc', cell: scoreCell, cls: 'num' },
@@ -27,12 +29,21 @@ async function start() {
   await loadConfig();
 
   initDetail(document.getElementById('detail'), { onVenueChange: onVenueChanged });
+  initScanStatus(document.querySelector('.listen-spalte'));
   renderFilters(document.getElementById('filters'));
   initJobs().catch(fail);
 
   const quick = document.getElementById('quick');
   quick.value = filterValue('q');
   quick.addEventListener('input', debounce((e) => setFilter('q', e.target.value), 300));
+
+  // Auf der Liste ist der Filter der ganze Bestand, nicht nur der
+  // Kartenausschnitt - hier reichert man ganze Ortschaften auf einmal an.
+  document.getElementById('daten-sammeln').addEventListener('click', async () => {
+    const filter = Object.fromEntries(new URLSearchParams(state.filter));
+    delete filter.bbox;
+    await startAnreicherung(filter);
+  });
 
   document.getElementById('export').addEventListener('click', () => {
     const query = new URLSearchParams(state.filter);
@@ -187,7 +198,7 @@ async function drawFunnel() {
     const stufen = data.funnel || [];
     const start = stufen[0]?.erreicht || 0;
 
-    clear(host).append(
+    fill(clear(host),
       ...stufen.map((s, i) => {
         const meta = state.config.status[s.status];
         const vorher = i ? stufen[i - 1].erreicht : null;
