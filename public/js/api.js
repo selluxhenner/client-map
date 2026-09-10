@@ -47,7 +47,16 @@ export function el(tag, props = {}, children = []) {
     else if (key === 'dataset') Object.assign(node.dataset, value);
     else node.setAttribute(key, value === true ? '' : value);
   }
-  for (const child of [].concat(children)) {
+  return fill(node, children);
+}
+
+/**
+ * Haengt Kinder an und laesst null/false aus. node.append() schreibt sonst
+ * den Text "null" in die Seite - genau das stand im Trichter neben
+ * "ausgeschieden", sobald keine Wiedervorlage faellig war.
+ */
+export function fill(node, ...children) {
+  for (const child of children.flat()) {
     if (child == null || child === false) continue;
     node.append(child.nodeType ? child : document.createTextNode(String(child)));
   }
