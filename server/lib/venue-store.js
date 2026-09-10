@@ -15,6 +15,8 @@ const EDITABLE = [
   'status', 'priority', 'notes', 'tags',
   'demo_path', 'analysis_path', 'analysis_summary', 'analysis_kind',
   'last_contact_at', 'last_analysis_at', 'follow_up_at', 'follow_up_note',
+  // Vom Web-Check geschrieben. Getrennt von analysis_*, siehe Migration 8.
+  'web_check_at', 'web_check_note',
   // Vom Agenten geschrieben, wie analysis_summary - laeuft aber durch denselben
   // Weg, damit es keinen zweiten Schreibpfad auf venues gibt.
   'outreach_draft', 'outreach_draft_at',

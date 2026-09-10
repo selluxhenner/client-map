@@ -2,7 +2,7 @@
 // Agent dabei. Der Live-Log kommt über einen Server-Sent-Events-Strom, damit
 // man beim Demo-Bau zusehen kann, statt zu warten und zu hoffen.
 
-import { el, clear, get, post, toast, fail } from './api.js';
+import { el, clear, fill, get, post, toast, fail } from './api.js';
 
 const KIND_ICON = { test: '🔌', schnell: '⚡', analyse: '🔍', kontakt: '✍️', demo: '🔨' };
 
@@ -217,7 +217,7 @@ function renderHead() {
   const q = store.queue;
   const running = q.running?.length || 0;
 
-  clear(nodes.head).append(
+  fill(clear(nodes.head),
     el('strong', {}, 'Aufträge'),
     el('span', { class: 'jobs-meta' },
       `${running}/${q.concurrency} laufen · heute ${Object.entries(q.heute || {})

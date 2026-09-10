@@ -26,19 +26,46 @@ Dann `http://localhost:8788` öffnen.
 5. Im Detail-Panel auf **🔍 Analyse** klicken. Claude recherchiert den Laden
    im Netz und schreibt das Ergebnis zurück (siehe unten).
 
-## Zwei Geschwindigkeiten
+## Drei Geschwindigkeiten
 
-| | **⚡ Schnell-Check** | **🔍 Analyse** |
-|---|---|---|
-| Frage | Website und Instagram — alles, was den Score bewegt | Wer ist der Laden, und womit spricht man ihn an |
-| Dauer | ~30 s | 2–3 min |
-| Werkzeugaufrufe | höchstens 4 | bis 12 |
-| Ergebnis | Faktenfelder + Score + kurze Notiz | dazu die volle Markdown-Analyse mit Story, Inhaber, Aufhängern, Quellen |
-| Wofür | ganze Ausschnitte bewerten | die Läden, die dabei oben landen |
+| | **⚡ Daten sammeln** | **⚡ Schnell-Check** | **🔍 Analyse** |
+|---|---|---|---|
+| Wer arbeitet | der Server selbst, per HTTP | Claude (Sonnet) | Claude (Sonnet) |
+| Frage | Läuft die Website? Telefon, Mail, Instagram, Facebook | Website und Instagram — alles, was den Score bewegt | Wer ist der Laden, und womit spricht man ihn an |
+| Dauer | ~2 s je Betrieb, 8 gleichzeitig | ~30 s | 2–3 min |
+| Kosten | keine | Kontingent | Kontingent |
+| Wofür | den ganzen Bestand auf einmal | was sich nicht messen lässt | die Läden, die dabei oben landen |
 
-Beide schreiben in dieselben Felder und berechnen den Score neu. Ein
-Schnell-Check über einen Betrieb, für den schon eine volle Analyse vorliegt,
-frischt nur die Fakten auf und lässt den Text in Ruhe.
+Der Web-Check misst, die beiden anderen urteilen. Deshalb setzt er nie
+`Modern und gut` und überschreibt auch kein Urteil aus einer Analyse — er
+korrigiert nur Messwerte und füllt leere Felder. Und ein Schnell-Check über
+einen Betrieb, für den schon eine volle Analyse vorliegt, frischt nur die
+Fakten auf und lässt den Text in Ruhe.
+
+## Daten sammeln (ohne Agent, ohne Kontingent)
+
+Der Knopf **⚡ Daten sammeln** steht auf Karte und Liste und arbeitet den
+aktuellen Filter ab — auf der Karte zusätzlich begrenzt auf den sichtbaren
+Ausschnitt. Für jeden Betrieb mit hinterlegter Website:
+
+1. Website abrufen (zweiter Versuch bei Fehlschlag, HTTP-Rückfall ohne SSL),
+2. Startseite und, falls nötig, die verlinkte Kontakt- oder Impressumsseite
+   nach `tel:`, `mailto:`, Instagram- und Facebook-Links durchsuchen,
+3. Website-Zustand daraus bestimmen: tote Domain, Platzhalterseite, kein
+   HTTPS oder kein Viewport → `Kaputt`; alte Bautechnik → `Veraltet`; sonst
+   höchstens `Brauchbar`.
+
+Gefüllt werden nur **leere** Felder — von Hand Eingetragenes bleibt stehen.
+Bleibt der Befund offen (Zeitlimit, Namensauflösung gescheitert), wird
+**nichts** geschrieben und der Betrieb bleibt ungeprüft; ein DNS-Aussetzer
+darf keine lebende Website als „kaputt" in die Datenbank schreiben.
+
+Betriebe **ohne** hinterlegte Website kann der Web-Check nicht beantworten —
+dafür ist der Schnell-Check da. Nur mit `GOOGLE_PLACES_KEY` schlägt er sie
+zusätzlich bei Google nach; erst dann ist „hat keine Website" belegt.
+
+Einzelne Betriebe prüft der Knopf **⚡ Web-Check (gratis)** im Detail-Panel,
+sofort und mit Antwort.
 
 ## Analyse durch Claude
 

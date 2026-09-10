@@ -8,7 +8,10 @@
 // Die Schnittstelle ist absichtlich identisch zu overpass.js, damit das
 // Einschalten eine Konfigurationsaenderung bleibt und kein Umbau.
 
+import { kennWorte, fastGleich } from '../lib/text.js';
+
 const ENDPOINT = 'https://places.googleapis.com/v1/places:searchNearby';
+const TEXT_ENDPOINT = 'https://places.googleapis.com/v1/places:searchText';
 
 /** Was Google pro Anfrage höchstens zurückgibt. Harte Grenze der API. */
 const MAX_PRO_ANFRAGE = 20;
@@ -125,13 +128,91 @@ export async function fetchVenues({ south, west, north, east }) {
   return betriebe;
 }
 
-function haversine(south, west, north, east) {
+/**
+ * Sucht EINEN bekannten Betrieb bei Google, um seine Luecken zu fuellen.
+ *
+ * Das ist der zweite Weg neben fetchVenues(): dort wird ein Ausschnitt
+ * abgesucht, hier ein Betrieb nachgeschlagen, den wir schon haben. Gebraucht
+ * wird das fuer die Sammel-Anreicherung - ohne hinterlegte Website gibt es
+ * nichts zu messen, und Google ist die einzige Quelle, die "hat keine
+ * Website" belegen kann.
+ *
+ * Gibt `null` zurueck, wenn kein Treffer sicher genug ist. Ein falsch
+ * zugeordneter Nachbarbetrieb waere schlimmer als eine Luecke.
+ */
+export async function lookupVenue(venue) {
+  if (!isEnabled()) return null;
+
+  const textQuery = [venue.name, venue.street, venue.zip, venue.city]
+    .filter(Boolean).join(', ');
+  if (!textQuery) return null;
+
+  const res = await fetch(TEXT_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': process.env.GOOGLE_PLACES_KEY,
+      'X-Goog-FieldMask': FIELDS,
+    },
+    body: JSON.stringify({
+      textQuery,
+      maxResultCount: 3,
+      languageCode: 'de',
+      // Der Ortsbezug ist die halbe Miete: "Sonne" gibt es in jedem Dorf.
+      locationBias: {
+        circle: { center: { latitude: venue.lat, longitude: venue.lng }, radius: 1000 },
+      },
+    }),
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!res.ok) throw new Error(`Google Places ${res.status}: ${(await res.text()).slice(0, 200)}`);
+
+  const treffer = (await res.json()).places || [];
+  const passend = treffer.find((p) => derselbeBetrieb(venue, p));
+  if (!passend) return null;
+
+  return {
+    place_id: passend.id,
+    website: passend.websiteUri || null,
+    phone: passend.nationalPhoneNumber || null,
+    rating: passend.rating ?? null,
+    review_count: passend.userRatingCount ?? null,
+    opening_hours: passend.regularOpeningHours?.weekdayDescriptions?.join('\n') || null,
+    permanently_closed: passend.businessStatus === 'CLOSED_PERMANENTLY',
+  };
+}
+
+/**
+ * Ist der Google-Treffer derselbe Laden?
+ *
+ * Naehe allein reicht nicht - in einer Altstadt liegen zehn Lokale im selben
+ * Haus (siehe dedupe.js). Es braucht ein Namensindiz, und die Naehe
+ * bestaetigt es nur. Nur wenn der Name ausser Fuellwoertern nichts hergibt,
+ * entscheidet der Abstand allein, dann aber sehr eng.
+ */
+function derselbeBetrieb(venue, place) {
+  const lat = place.location?.latitude;
+  const lng = place.location?.longitude;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+
+  const abstand = haversine(venue.lat, venue.lng, lat, lng);
+  if (abstand > 300) return false;
+
+  const unsere = kennWorte(venue.name);
+  const ihre = kennWorte(place.displayName?.text || '');
+  if (!unsere.length || !ihre.length) return abstand <= 60;
+
+  return unsere.some((wort) => ihre.some((anderes) => fastGleich(wort, anderes)));
+}
+
+function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(north - south);
-  const dLng = toRad(east - west);
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(south)) * Math.cos(toRad(north)) * Math.sin(dLng / 2) ** 2;
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }

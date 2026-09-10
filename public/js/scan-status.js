@@ -76,8 +76,61 @@ export function trackBatch(ids, titel = 'Betriebe werden bewertet') {
 
 function handleEvent(payload) {
   if (payload.type === 'discover') return handleDiscover(payload);
+  if (payload.type === 'anreicherung') return handleAnreicherung(payload);
   if (payload.type === 'job') return handleJob(payload.job);
   if (payload.type === 'venue') return handleVenue(payload.venue);
+}
+
+/**
+ * Der Web-Check meldet seinen Stand selbst - anders als beim Auftrags-Stapel
+ * gibt es hier keine Jobs zum Mitzaehlen. Der Streifen erscheint deshalb auch
+ * dann, wenn der Lauf in einem anderen Tab gestartet wurde.
+ */
+function handleAnreicherung(e) {
+  if (e.phase === 'fehler') return scanEnd(e.meldung || 'Fehlgeschlagen', { fehler: true });
+
+  if (e.phase === 'start') {
+    scanBegin('Daten werden gesammelt', `${e.gesamt} Betriebe · Websites werden abgerufen …`);
+    return;
+  }
+  // Auch dann anfangen, wenn der Streifen noch das Ergebnis des letzten
+  // Vorgangs zeigt - sonst laeuft der neue Lauf unter altem Titel weiter.
+  if (!lauf || lauf.fertig) scanBegin('Daten werden gesammelt');
+
+  lauf.von = e.erledigt ?? 0;
+  lauf.bis = e.gesamt ?? 0;
+
+  if (e.phase === 'fertig') {
+    scanEnd(
+      [
+        `${e.erledigt} geprüft`,
+        `${e.erreichbar} Websites erreichbar`,
+        e.tot ? `${e.tot} tot oder Platzhalter` : null,
+        ergaenzt(e.neu) || 'nichts Neues gefunden',
+        e.unklar ? `${e.unklar} ohne klares Ergebnis` : null,
+        e.abgebrochen ? 'abgebrochen' : null,
+      ].filter(Boolean).join(' · '),
+      { fehler: e.erledigt === 0 }
+    );
+    return;
+  }
+
+  lauf.zeile = [
+    `${e.erledigt} von ${e.gesamt}`,
+    `${e.erreichbar} erreichbar`,
+    e.tot ? `${e.tot} tot` : null,
+    ergaenzt(e.neu),
+  ].filter(Boolean).join(' · ');
+  render();
+}
+
+/** "12 Telefon, 4 Instagram" - nur was tatsaechlich dazukam. */
+function ergaenzt(neu = {}) {
+  const label = { phone: 'Telefon', email: 'Mail', instagram: 'Instagram', facebook: 'Facebook', website: 'Website' };
+  return Object.entries(label)
+    .filter(([key]) => neu[key])
+    .map(([key, text]) => `${neu[key]} ${text}`)
+    .join(', ');
 }
 
 function handleDiscover(e) {
