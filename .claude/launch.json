@@ -1,0 +1,22 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "client-map",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "start"
+      ],
+      "port": 8788,
+      "autoPort": true
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/k_sch/AppData/Local/Temp/claude/B--06-CODE-Projects-client-map/5f4dfc81-723b-4469-a58a-5c84c1fd8f28/scratchpad/serve.cjs"
+      ],
+      "port": 4321
+    }
+  ]
+}
